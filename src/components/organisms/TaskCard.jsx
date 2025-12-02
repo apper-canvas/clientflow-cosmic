@@ -187,8 +187,7 @@ const TaskCard = ({
           </div>
         </div>
       )}
-
-      {/* Assignee */}
+{/* Assignee */}
       {task.assignee && (
         <div className="flex items-center gap-2 mb-3">
           <div className="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
@@ -197,6 +196,104 @@ const TaskCard = ({
           <span className="text-sm text-slate-600 dark:text-slate-400">
             {task.assignee}
           </span>
+        </div>
+      )}
+
+      {/* Tags */}
+      {task.tags && task.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {task.tags.slice(0, 3).map((tag, index) => (
+            <span key={index} className="inline-flex items-center px-2 py-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded-full text-xs">
+              {tag}
+            </span>
+          ))}
+          {task.tags.length > 3 && (
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              +{task.tags.length - 3} more
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Progress Bar for tasks with subtasks */}
+      {task.subtasks && task.subtasks.length > 0 && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1">
+            <span>Progress ({task.subtasks.filter(s => s.status === 'Completed').length}/{task.subtasks.length} subtasks)</span>
+            <span>{task.progress || 0}%</span>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+            <div 
+              className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
+              style={{ width: `${task.progress || 0}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Subtasks Preview */}
+      {task.subtasks && task.subtasks.length > 0 && (
+        <div className="mb-3">
+          <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+            Subtasks ({task.subtasks.length})
+          </div>
+          <div className="space-y-1 max-h-20 overflow-y-auto">
+            {task.subtasks.slice(0, 3).map((subtask, index) => (
+              <div key={index} className="flex items-center gap-2 text-xs">
+                <div className={`w-3 h-3 rounded border ${
+                  subtask.status === 'Completed' 
+                    ? 'bg-green-500 border-green-500' 
+                    : 'border-slate-300 dark:border-slate-600'
+                }`}>
+                  {subtask.status === 'Completed' && (
+                    <ApperIcon name="Check" className="w-2 h-2 text-white" />
+                  )}
+                </div>
+                <span className={`truncate ${
+                  subtask.status === 'Completed' 
+                    ? 'line-through text-slate-500 dark:text-slate-400' 
+                    : 'text-slate-700 dark:text-slate-300'
+                }`}>
+                  {subtask.title}
+                </span>
+              </div>
+            ))}
+            {task.subtasks.length > 3 && (
+              <div className="text-xs text-slate-500 dark:text-slate-400 pl-5">
+                +{task.subtasks.length - 3} more subtasks
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Time Tracking Status */}
+      {task.activeTimer && (
+        <div className="flex items-center gap-2 mb-3 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-xs text-green-700 dark:text-green-400 font-medium">
+            Timer Running
+          </span>
+        </div>
+      )}
+
+      {/* Time Tracking Info */}
+      {(task.actualHours > 0 || task.timeEntries?.length > 0) && (
+        <div className="flex items-center gap-2 mb-3">
+          <ApperIcon name="Clock" className="w-3 h-3 text-slate-500" />
+          <span className="text-xs text-slate-600 dark:text-slate-400">
+            {task.actualHours || 0}h tracked
+            {task.timeEntries && task.timeEntries.length > 0 && (
+              <span className="ml-1">
+                ({task.timeEntries.length} entries)
+              </span>
+            )}
+          </span>
+          {task.billable && (
+            <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">
+              Billable
+            </span>
+          )}
         </div>
       )}
 

@@ -1,20 +1,21 @@
-import { useState, useEffect } from 'react'
-import { toast } from 'react-toastify'
-import Button from '@/components/atoms/Button'
-import Input from '@/components/atoms/Input'
-import Select from '@/components/atoms/Select'
-import SearchBar from '@/components/molecules/SearchBar'
-import StatusBadge from '@/components/molecules/StatusBadge'
-import TaskCard from '@/components/organisms/TaskCard'
-import TaskForm from '@/components/organisms/TaskForm'
-import TaskKanban from '@/components/organisms/TaskKanban'
-import Loading from '@/components/ui/Loading'
-import ErrorView from '@/components/ui/ErrorView'
-import Empty from '@/components/ui/Empty'
-import ApperIcon from '@/components/ApperIcon'
-import taskService, { TASK_STATUSES, TASK_PRIORITIES, TASK_TYPES } from '@/services/api/taskService'
-import projectService from '@/services/api/projectService'
-import { format, isAfter, isBefore } from 'date-fns'
+import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import { format, isAfter, isBefore } from "date-fns";
+import projectService from "@/services/api/projectService";
+import taskService, { TASK_PRIORITIES, TASK_STATUSES, TASK_TYPES } from "@/services/api/taskService";
+import ApperIcon from "@/components/ApperIcon";
+import Loading from "@/components/ui/Loading";
+import ErrorView from "@/components/ui/ErrorView";
+import Empty from "@/components/ui/Empty";
+import Select from "@/components/atoms/Select";
+import Button from "@/components/atoms/Button";
+import Input from "@/components/atoms/Input";
+import TaskForm from "@/components/organisms/TaskForm";
+import TaskKanban from "@/components/organisms/TaskKanban";
+import TaskCard from "@/components/organisms/TaskCard";
+import Projects from "@/components/pages/Projects";
+import SearchBar from "@/components/molecules/SearchBar";
+import StatusBadge from "@/components/molecules/StatusBadge";
 
 const Tasks = () => {
   const [tasks, setTasks] = useState([])
@@ -140,6 +141,50 @@ const Tasks = () => {
     setTasks(prev => prev.map(task => 
       task.Id === updatedTask.Id ? updatedTask : task
     ))
+}
+
+  const handleStartTimer = async (taskId) => {
+    try {
+      await taskService.startTimer(taskId)
+      toast.success('Timer started')
+      loadData()
+    } catch (err) {
+      toast.error('Failed to start timer')
+      console.error('Error starting timer:', err)
+    }
+  }
+
+  const handleStopTimer = async (taskId) => {
+    try {
+      await taskService.stopTimer(taskId)
+      toast.success('Timer stopped')
+      loadData()
+    } catch (err) {
+      toast.error('Failed to stop timer')
+      console.error('Error stopping timer:', err)
+    }
+  }
+
+  const handleAddManualTime = async (taskId) => {
+    const hours = prompt('Enter hours worked:')
+    if (!hours || isNaN(parseFloat(hours))) {
+      return
+    }
+
+    const description = prompt('Enter description (optional):') || ''
+    
+    try {
+      await taskService.addTimeEntry(taskId, {
+        hours: parseFloat(hours),
+        description,
+        date: new Date().toISOString().split('T')[0]
+      })
+      toast.success('Time entry added')
+      loadData()
+    } catch (err) {
+      toast.error('Failed to add time entry')
+      console.error('Error adding time entry:', err)
+    }
   }
 
   const getProjectName = (projectId) => {
@@ -403,32 +448,77 @@ const Tasks = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTasks.map((task) => (
+{filteredTasks.map((task) => (
                     <tr 
                       key={task.Id} 
                       className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
                     >
                       <td className="p-4">
                         <div>
-                          <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
-                            {task.title}
-                          </h4>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium text-slate-900 dark:text-slate-100">
+                              {task.title}
+                            </h4>
+                            {task.activeTimer && (
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Timer running"></div>
+                            )}
+                            {task.billable && (
+                              <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">
+                                Billable
+                              </span>
+                            )}
+                          </div>
                           {task.description && (
-                            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
+                            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-2">
                               {task.description}
                             </p>
                           )}
-                          <div className="flex items-center gap-2 mt-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full text-xs">
                               <ApperIcon name="Tag" className="w-3 h-3" />
                               {task.type}
                             </span>
+                            {task.subtasks && task.subtasks.length > 0 && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded-full text-xs">
+                                <ApperIcon name="CheckSquare" className="w-3 h-3" />
+                                {task.subtasks.filter(s => s.status === 'Completed').length}/{task.subtasks.length}
+                              </span>
+                            )}
+                            {task.tags && task.tags.length > 0 && (
+                              <div className="flex items-center gap-1">
+                                {task.tags.slice(0, 2).map((tag, index) => (
+                                  <span key={index} className="px-1.5 py-0.5 bg-accent-100 dark:bg-accent-900 text-accent-700 dark:text-accent-300 rounded text-xs">
+                                    {tag}
+                                  </span>
+                                ))}
+                                {task.tags.length > 2 && (
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                                    +{task.tags.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             {task.Id && (
                               <span className="text-xs text-slate-500 dark:text-slate-400">
                                 #{task.Id}
                               </span>
                             )}
                           </div>
+                          {/* Progress bar for tasks with subtasks */}
+                          {task.subtasks && task.subtasks.length > 0 && (
+                            <div className="mt-2">
+                              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1">
+                                <span>Progress</span>
+                                <span>{task.progress || 0}%</span>
+                              </div>
+                              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+                                <div 
+                                  className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
+                                  style={{ width: `${task.progress || 0}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="p-4">
@@ -472,26 +562,61 @@ const Tasks = () => {
                         )}
                       </td>
                       <td className="p-4">
-                        {task.estimatedHours ? (
+                        <div className="space-y-2">
+                          {/* Time Tracking */}
                           <div className="space-y-1">
-                            <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
-                              <span>{task.actualHours || 0}h</span>
-                              <span>{task.estimatedHours}h</span>
+                            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                              <span>Tracked: {task.actualHours || 0}h</span>
+                              {task.estimatedHours && <span>Est: {task.estimatedHours}h</span>}
                             </div>
-                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
-                              <div 
-                                className="bg-primary-600 h-1.5 rounded-full"
-                                style={{ 
-                                  width: `${Math.min(((task.actualHours || 0) / task.estimatedHours) * 100, 100)}%` 
-                                }}
-                              />
-                            </div>
+                            {task.estimatedHours && (
+                              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+                                <div 
+                                  className="bg-primary-600 h-1.5 rounded-full"
+                                  style={{ 
+                                    width: `${Math.min(((task.actualHours || 0) / task.estimatedHours) * 100, 100)}%` 
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {task.timeEntries && task.timeEntries.length > 0 && (
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {task.timeEntries.length} time entries
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <span className="text-sm text-slate-500 dark:text-slate-400">
-                            Not tracked
-                          </span>
-                        )}
+                          
+                          {/* Timer Controls */}
+                          <div className="flex items-center gap-1">
+                            {task.activeTimer ? (
+                              <button
+                                onClick={() => handleStopTimer(task.Id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 rounded transition-colors"
+                                title="Stop timer"
+                              >
+                                <ApperIcon name="Square" className="w-3 h-3" />
+                                Stop
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleStartTimer(task.Id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300 rounded transition-colors"
+                                title="Start timer"
+                              >
+                                <ApperIcon name="Play" className="w-3 h-3" />
+                                Start
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleAddManualTime(task.Id)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded transition-colors"
+                              title="Add manual time"
+                            >
+                              <ApperIcon name="Clock" className="w-3 h-3" />
+                              Manual
+                            </button>
+                          </div>
+                        </div>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center justify-center gap-2">
