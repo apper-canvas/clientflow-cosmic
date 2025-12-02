@@ -8,6 +8,7 @@ const ClientDetail = lazy(() => import("@/components/pages/ClientDetail"))
 const Expenses = lazy(() => import("@/components/pages/Expenses"))
 const Projects = lazy(() => import("@/components/pages/Projects"))
 const ProjectDetail = lazy(() => import("@/components/pages/ProjectDetail"))
+const Tasks = lazy(() => import("@/components/pages/Tasks"))
 const ComingSoon = lazy(() => import("@/components/pages/ComingSoon"))
 const NotFound = lazy(() => import("@/components/pages/NotFound"))
 
@@ -66,10 +67,10 @@ path: "projects",
     ),
   },
   {
-    path: "tasks",
+path: "tasks",
     element: (
       <Suspense fallback={suspenseFallback}>
-        <ComingSoon feature="Tasks" />
+        <Tasks />
       </Suspense>
     ),
   },
