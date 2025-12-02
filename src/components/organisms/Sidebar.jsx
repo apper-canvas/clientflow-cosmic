@@ -63,8 +63,8 @@ const navigationItems = [
             <ApperIcon name="Briefcase" className="h-8 w-8 text-white" />
           </div>
           <div className="ml-3">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
-              ClientFlow Pro
+<h1 className="text-xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
+              WorkSphere
             </h1>
           </div>
         </div>
@@ -134,9 +134,9 @@ const navigationItems = [
                 <div className="bg-gradient-to-br from-primary-600 to-accent-600 p-2 rounded-lg">
                   <ApperIcon name="Briefcase" className="h-6 w-6 text-white" />
                 </div>
-                <div className="ml-3">
+<div className="ml-3">
                   <h1 className="text-lg font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
-                    ClientFlow Pro
+                    WorkSphere
                   </h1>
                 </div>
               </div>

@@ -25,11 +25,11 @@ const Header = ({ onMenuToggle }) => {
           </button>
           
           <div className="hidden sm:block">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+<h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               Project Management
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              Welcome back! Here's your project overview.
+              Manage clients, projects, and billing effortlessly
             </p>
           </div>
         </div>
