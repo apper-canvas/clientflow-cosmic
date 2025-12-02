@@ -73,13 +73,19 @@ function ClientForm({ client, isOpen, onClose, onSave }) {
     currency: 'USD',
     status: 'Prospect',
     clientType: 'Company',
-    industry: ''
+    industry: '',
+    companySize: '',
+    referralSource: '',
+    clientSince: '',
+    tags: [],
+    internalNotes: '',
+    contacts: []
   })
   
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
+useEffect(() => {
     if (client) {
       setFormData({
         company: client.company || '',
@@ -109,7 +115,13 @@ function ClientForm({ client, isOpen, onClose, onSave }) {
         currency: client.currency || 'USD',
         status: client.status || 'Prospect',
         clientType: client.clientType || 'Company',
-        industry: client.industry || ''
+        industry: client.industry || '',
+        companySize: client.companySize || '',
+        referralSource: client.referralSource || '',
+        clientSince: client.clientSince || '',
+        tags: client.tags || [],
+        internalNotes: client.internalNotes || '',
+        contacts: client.contacts || []
       })
     } else {
       setFormData({
@@ -140,28 +152,83 @@ function ClientForm({ client, isOpen, onClose, onSave }) {
         currency: 'USD',
         status: 'Prospect',
         clientType: 'Company',
-        industry: ''
+        industry: '',
+        companySize: '',
+        referralSource: '',
+        clientSince: '',
+        tags: [],
+        internalNotes: '',
+        contacts: []
       })
     }
     setErrors({})
   }, [client, isOpen])
 
-  function validateForm() {
+  const handleTagsChange = (value) => {
+    const tags = value.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+    handleChange('tags', tags)
+  }
+
+  const addContact = () => {
+    const newContacts = [...formData.contacts, {
+      name: '',
+      title: '',
+      email: '',
+      phone: '',
+      mobile: '',
+      isPrimary: formData.contacts.length === 0
+    }]
+    handleChange('contacts', newContacts)
+  }
+
+  const updateContact = (index, field, value) => {
+    const updatedContacts = [...formData.contacts]
+    updatedContacts[index] = { ...updatedContacts[index], [field]: value }
+    handleChange('contacts', updatedContacts)
+  }
+
+  const removeContact = (index) => {
+    const updatedContacts = formData.contacts.filter((_, i) => i !== index)
+    // If removing primary contact and others exist, make first one primary
+    if (updatedContacts.length > 0 && formData.contacts[index].isPrimary) {
+      updatedContacts[0].isPrimary = true
+    }
+    handleChange('contacts', updatedContacts)
+  }
+
+  const setPrimaryContact = (index) => {
+    const updatedContacts = formData.contacts.map((contact, i) => ({
+      ...contact,
+      isPrimary: i === index
+    }))
+    handleChange('contacts', updatedContacts)
+  }
+
+function validateForm() {
     const newErrors = {}
 
     if (!formData.company.trim()) {
       newErrors.company = 'Company name is required'
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    // Validate primary contact or legacy email field
+    const primaryContact = formData.contacts.find(c => c.isPrimary)
+    if (!primaryContact && !formData.email.trim()) {
+      newErrors.email = 'Email is required (either in contacts or main email field)'
+    } else if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address'
     }
 
     if (formData.website && !/^https?:\/\/.+/.test(formData.website)) {
       newErrors.website = 'Please enter a valid URL (include http:// or https://)'
     }
+
+    // Validate contacts
+    formData.contacts.forEach((contact, index) => {
+      if (contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
+        newErrors[`contact_${index}_email`] = 'Please enter a valid email address'
+      }
+    })
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0

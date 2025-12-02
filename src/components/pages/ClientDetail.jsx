@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
-import { format } from 'date-fns'
-import Button from '@/components/atoms/Button'
-import StatusBadge from '@/components/molecules/StatusBadge'
-import ClientForm from '@/components/organisms/ClientForm'
-import Loading from '@/components/ui/Loading'
-import ErrorView from '@/components/ui/ErrorView'
-import ApperIcon from '@/components/ApperIcon'
-import clientService from '@/services/api/clientService'
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { format } from "date-fns";
+import clientService from "@/services/api/clientService";
+import ApperIcon from "@/components/ApperIcon";
+import Loading from "@/components/ui/Loading";
+import ErrorView from "@/components/ui/ErrorView";
+import Empty from "@/components/ui/Empty";
+import Button from "@/components/atoms/Button";
+import ClientForm from "@/components/organisms/ClientForm";
+import Clients from "@/components/pages/Clients";
+import Projects from "@/components/pages/Projects";
+import StatusBadge from "@/components/molecules/StatusBadge";
 
 function ClientDetail() {
   const { id } = useParams()
@@ -17,7 +20,17 @@ function ClientDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showEditForm, setShowEditForm] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
 
+  const tabs = [
+    { key: 'overview', label: 'Overview', icon: 'User' },
+    { key: 'contacts', label: 'Contacts', icon: 'Users' },
+    { key: 'projects', label: 'Projects', icon: 'Briefcase' },
+    { key: 'invoices', label: 'Invoices', icon: 'FileText' },
+    { key: 'documents', label: 'Documents', icon: 'Folder' },
+    { key: 'activity', label: 'Activity', icon: 'Activity' },
+    { key: 'notes', label: 'Notes', icon: 'MessageSquare' }
+  ]
   useEffect(() => {
     loadClient()
   }, [id])
@@ -81,6 +94,567 @@ function ClientDetail() {
     return <ErrorView message="Client not found" />
   }
 
+const getPrimaryContact = () => {
+    return client.contacts?.find(contact => contact.isPrimary) || client.contacts?.[0]
+  }
+
+  const getSecondaryContacts = () => {
+    return client.contacts?.filter(contact => !contact.isPrimary) || []
+  }
+
+  const formatTags = (tags) => {
+    if (!tags || tags.length === 0) return '—'
+    return tags.map(tag => (
+      <span key={tag} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 mr-2 mb-1">
+        {tag}
+      </span>
+    ))
+  }
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Information */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Contact Information */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                  Contact Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Company Name
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {client.company || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Primary Contact
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {getPrimaryContact()?.name || client.name || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Email
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {(getPrimaryContact()?.email || client.email) ? (
+                        <a
+                          href={`mailto:${getPrimaryContact()?.email || client.email}`}
+                          className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                        >
+                          {getPrimaryContact()?.email || client.email}
+                        </a>
+                      ) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Phone
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {(getPrimaryContact()?.phone || client.phone) ? (
+                        <a
+                          href={`tel:${getPrimaryContact()?.phone || client.phone}`}
+                          className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                        >
+                          {getPrimaryContact()?.phone || client.phone}
+                        </a>
+                      ) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Mobile Phone
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {(getPrimaryContact()?.mobile || client.mobilePhone) ? (
+                        <a
+                          href={`tel:${getPrimaryContact()?.mobile || client.mobilePhone}`}
+                          className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                        >
+                          {getPrimaryContact()?.mobile || client.mobilePhone}
+                        </a>
+                      ) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Website
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {client.website ? (
+                        <a
+                          href={client.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                        >
+                          {client.website}
+                        </a>
+                      ) : '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Information */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                  Address Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Physical Address
+                    </label>
+                    <p className="text-slate-900 dark:text-white whitespace-pre-line">
+                      {formatAddress(client.address)}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Billing Address
+                    </label>
+                    <p className="text-slate-900 dark:text-white whitespace-pre-line">
+                      {client.useSameAddress 
+                        ? 'Same as physical address'
+                        : formatAddress(client.billingAddress)
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Information */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                  Business Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Industry
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {client.industry || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Company Size
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {client.companySize || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Referral Source
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {client.referralSource || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Tax ID / VAT Number
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {client.taxId || '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                  Tags
+                </h2>
+                <div className="flex flex-wrap">
+                  {formatTags(client.tags)}
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Quick Stats */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                  Quick Stats
+                </h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Total Revenue</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      ${client.totalRevenue?.toLocaleString() || '0'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Client Since</span>
+                    <span className="text-slate-900 dark:text-white">
+                      {client.clientSince ? format(new Date(client.clientSince), 'MMM yyyy') : 
+                       client.createdAt ? format(new Date(client.createdAt), 'MMM yyyy') : '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Information */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                  Payment Details
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Payment Terms
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {client.paymentTerms || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Preferred Payment Method
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {client.paymentMethod || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Currency
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {client.currency || '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                  Timeline
+                </h2>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-primary-600 rounded-full mt-2"></div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        Client created
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {client.createdAt ? format(new Date(client.createdAt), 'MMM dd, yyyy') : '—'}
+                      </p>
+                    </div>
+                  </div>
+                  {client.updatedAt && client.updatedAt !== client.createdAt && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-accent-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          Last updated
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {format(new Date(client.updatedAt), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'contacts':
+        return (
+          <div className="space-y-6">
+            {/* Primary Contact */}
+            {getPrimaryContact() && (
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Primary Contact
+                  </h2>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
+                    Primary
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Name
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {getPrimaryContact().name || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Title
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {getPrimaryContact().title || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Email
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {getPrimaryContact().email ? (
+                        <a
+                          href={`mailto:${getPrimaryContact().email}`}
+                          className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                        >
+                          {getPrimaryContact().email}
+                        </a>
+                      ) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Phone
+                    </label>
+                    <p className="text-slate-900 dark:text-white">
+                      {getPrimaryContact().phone ? (
+                        <a
+                          href={`tel:${getPrimaryContact().phone}`}
+                          className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                        >
+                          {getPrimaryContact().phone}
+                        </a>
+                      ) : '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Secondary Contacts */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Secondary Contacts
+                </h2>
+                <Button variant="outline" size="sm">
+                  <ApperIcon name="Plus" className="w-4 h-4" />
+                  Add Contact
+                </Button>
+              </div>
+              {getSecondaryContacts().length > 0 ? (
+                <div className="space-y-4">
+                  {getSecondaryContacts().map((contact, index) => (
+                    <div key={index} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            Name
+                          </label>
+                          <p className="text-slate-900 dark:text-white">
+                            {contact.name || '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            Title
+                          </label>
+                          <p className="text-slate-900 dark:text-white">
+                            {contact.title || '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            Email
+                          </label>
+                          <p className="text-slate-900 dark:text-white">
+                            {contact.email ? (
+                              <a
+                                href={`mailto:${contact.email}`}
+                                className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                              >
+                                {contact.email}
+                              </a>
+                            ) : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            Phone
+                          </label>
+                          <p className="text-slate-900 dark:text-white">
+                            {contact.phone ? (
+                              <a
+                                href={`tel:${contact.phone}`}
+                                className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                              >
+                                {contact.phone}
+                              </a>
+                            ) : '—'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Empty
+                  title="No secondary contacts"
+                  message="Add additional contacts for this client to keep track of all stakeholders."
+                  actionLabel="Add Contact"
+                  onAction={() => {}}
+                />
+              )}
+            </div>
+          </div>
+        )
+
+      case 'projects':
+        return (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Projects
+              </h2>
+              <Button variant="outline" size="sm">
+                <ApperIcon name="Plus" className="w-4 h-4" />
+                New Project
+              </Button>
+            </div>
+            <Empty
+              title="No projects yet"
+              message="Create your first project for this client to start tracking work and progress."
+              actionLabel="Create Project"
+              onAction={() => navigate('/projects')}
+            />
+          </div>
+        )
+
+      case 'invoices':
+        return (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Invoices
+              </h2>
+              <Button variant="outline" size="sm">
+                <ApperIcon name="Plus" className="w-4 h-4" />
+                New Invoice
+              </Button>
+            </div>
+            <Empty
+              title="No invoices yet"
+              message="Create your first invoice for this client to start billing for your services."
+              actionLabel="Create Invoice"
+              onAction={() => {}}
+            />
+          </div>
+        )
+
+      case 'documents':
+        return (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Documents
+              </h2>
+              <Button variant="outline" size="sm">
+                <ApperIcon name="Upload" className="w-4 h-4" />
+                Upload Document
+              </Button>
+            </div>
+            <Empty
+              title="No documents uploaded"
+              message="Upload contracts, proposals, and other important documents related to this client."
+              actionLabel="Upload Document"
+              onAction={() => {}}
+            />
+          </div>
+        )
+
+      case 'activity':
+        return (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">
+              Activity Timeline
+            </h2>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                <div className="w-2 h-2 bg-primary-600 rounded-full mt-2"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    Client created
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {client.createdAt ? format(new Date(client.createdAt), 'MMM dd, yyyy \'at\' h:mm a') : '—'}
+                  </p>
+                </div>
+              </div>
+              {client.updatedAt && client.updatedAt !== client.createdAt && (
+                <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <div className="w-2 h-2 bg-accent-500 rounded-full mt-2"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      Client information updated
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {format(new Date(client.updatedAt), 'MMM dd, yyyy \'at\' h:mm a')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+
+      case 'notes':
+        return (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Internal Notes
+              </h2>
+              <Button variant="outline" size="sm">
+                <ApperIcon name="Plus" className="w-4 h-4" />
+                Add Note
+              </Button>
+            </div>
+            {client.internalNotes ? (
+              <div className="prose dark:prose-invert max-w-none">
+                <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                  <p className="text-slate-900 dark:text-white whitespace-pre-wrap">
+                    {client.internalNotes}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <Empty
+                title="No notes added"
+                message="Add internal notes about this client that are only visible to your team."
+                actionLabel="Add Note"
+                onAction={() => {}}
+              />
+            )}
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -125,241 +699,30 @@ function ClientDetail() {
         </div>
       </div>
 
-      {/* Client Information */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Information */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Contact Information */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Contact Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Company Name
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.company || '—'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Contact Person
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.name || '—'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Email
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.email ? (
-                    <a
-                      href={`mailto:${client.email}`}
-                      className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                    >
-                      {client.email}
-                    </a>
-                  ) : '—'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Phone
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.phone ? (
-                    <a
-                      href={`tel:${client.phone}`}
-                      className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                    >
-                      {client.phone}
-                    </a>
-                  ) : '—'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Mobile Phone
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.mobilePhone ? (
-                    <a
-                      href={`tel:${client.mobilePhone}`}
-                      className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                    >
-                      {client.mobilePhone}
-                    </a>
-                  ) : '—'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Website
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.website ? (
-                    <a
-                      href={client.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                    >
-                      {client.website}
-                    </a>
-                  ) : '—'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Address Information */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Address Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Physical Address
-                </label>
-                <p className="text-slate-900 dark:text-white whitespace-pre-line">
-                  {formatAddress(client.address)}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Billing Address
-                </label>
-                <p className="text-slate-900 dark:text-white whitespace-pre-line">
-                  {client.useSameAddress 
-                    ? 'Same as physical address'
-                    : formatAddress(client.billingAddress)
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Business Information */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Business Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Industry
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.industry || '—'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Tax ID / VAT Number
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.taxId || '—'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Quick Stats */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Quick Stats
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Total Revenue</span>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  ${client.totalRevenue?.toLocaleString() || '0'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Client Since</span>
-                <span className="text-slate-900 dark:text-white">
-                  {client.createdAt ? format(new Date(client.createdAt), 'MMM yyyy') : '—'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Information */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Payment Details
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Payment Terms
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.paymentTerms || '—'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Preferred Payment Method
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.paymentMethod || '—'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Currency
-                </label>
-                <p className="text-slate-900 dark:text-white">
-                  {client.currency || '—'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Timeline
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-primary-600 rounded-full mt-2"></div>
-                <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">
-                    Client created
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {client.createdAt ? format(new Date(client.createdAt), 'MMM dd, yyyy') : '—'}
-                  </p>
-                </div>
-              </div>
-              {client.updatedAt && client.updatedAt !== client.createdAt && (
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-accent-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">
-                      Last updated
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {format(new Date(client.updatedAt), 'MMM dd, yyyy')}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Tab Navigation */}
+      <div className="border-b border-slate-200 dark:border-slate-700">
+        <nav className="-mb-px flex space-x-8 overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`
+                whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors
+                ${activeTab === tab.key
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
+                }
+              `}
+            >
+              <ApperIcon name={tab.icon} className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       </div>
+
+      {/* Tab Content */}
+      {renderTabContent()}
 
       <ClientForm
         client={client}
@@ -367,7 +730,7 @@ function ClientDetail() {
         onClose={() => setShowEditForm(false)}
         onSave={handleSaveClient}
       />
-    </div>
+</div>
   )
 }
 
