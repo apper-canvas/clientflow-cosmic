@@ -26,8 +26,10 @@ const dashboardService = {
       .filter(invoice => invoice.status === "sent" || invoice.status === "overdue")
       .reduce((total, invoice) => total + invoice.amount, 0)
     
-    // Active projects count
-    const activeProjects = projectsData.filter(project => project.status === "active").length
+// Active projects count
+    const activeProjects = projectsData.filter(project => 
+      project.status === "In Progress" || project.status === "Planning"
+    ).length
     
     // Hours logged this week (mock calculation)
     const hoursThisWeek = 42.5
@@ -47,7 +49,7 @@ const dashboardService = {
         trend: "down",
         trendValue: "-5.2%"
       },
-      {
+{
         title: "Active Projects",
         value: activeProjects.toString(),
         icon: "Folder",
@@ -133,7 +135,7 @@ const dashboardService = {
     return months
   },
 
-  async getProjectStatusChart() {
+async getProjectStatusChart() {
     await new Promise(resolve => setTimeout(resolve, 200))
     
     const statusCounts = {}

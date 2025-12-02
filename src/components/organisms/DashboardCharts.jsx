@@ -81,7 +81,7 @@ const DashboardCharts = () => {
   }]
 
   // Project Status Chart Configuration
-  const projectStatusOptions = {
+const projectStatusOptions = {
     chart: {
       type: "donut"
     },
@@ -112,7 +112,6 @@ const DashboardCharts = () => {
       mode: document.documentElement.classList.contains("dark") ? "dark" : "light"
     }
   }
-
   const projectStatusSeries = projectStatusData.map(item => item.count)
 
   // Top Clients Chart Configuration
@@ -142,7 +141,7 @@ const DashboardCharts = () => {
     },
     xaxis: {
       categories: topClientsData.map(item => item.name),
-      labels: {
+labels: {
         formatter: (value) => `$${value.toLocaleString()}`,
         style: {
           colors: "#64748b",

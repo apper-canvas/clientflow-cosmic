@@ -20,10 +20,9 @@ const Sidebar = ({ isOpen, onToggle }) => {
       comingSoon: true
     },
     {
-      name: "Projects",
+name: "Projects",
       href: "/projects",
-      icon: "Folder",
-      comingSoon: true
+      icon: "Folder"
     },
     {
       name: "Tasks",

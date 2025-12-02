@@ -46,7 +46,7 @@ const Dashboard = () => {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {metrics.map((metric) => (
           <MetricCard
             key={metric.title}
@@ -63,7 +63,7 @@ const Dashboard = () => {
       <DashboardCharts />
 
       {/* Activity & Deadlines */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ActivityFeed />
         <UpcomingDeadlines />
       </div>
