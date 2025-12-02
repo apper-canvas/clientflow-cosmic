@@ -563,10 +563,8 @@ const getPrimaryContact = () => {
             />
           </div>
         )
-
 case 'documents':
         return <ClientDocuments clientId={id} />
-
       case 'activity':
         return (
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
@@ -932,7 +930,10 @@ case 'documents':
         client={client}
         isOpen={showEditForm}
         onClose={() => setShowEditForm(false)}
-        onSave={handleSaveClient}
+onSave={handleSaveClient}
       />
     </div>
   )
+}
+
+export default ClientDetail
