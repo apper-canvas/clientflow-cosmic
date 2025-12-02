@@ -413,10 +413,10 @@ const Tasks = () => {
       </div>
 
       {/* Content */}
-      {view === 'kanban' ? (
+{view === 'kanban' ? (
         <TaskKanban
           tasks={filteredTasks}
-          loading={false}
+          loading={loading}
           onTaskUpdate={handleTaskUpdate}
           onTaskEdit={handleEditTask}
           onTaskDelete={handleDeleteTask}

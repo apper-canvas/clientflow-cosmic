@@ -1,7 +1,22 @@
 import tasksData from "@/services/mockData/tasks.json";
 import projectsData from "@/services/mockData/projects.json";
 
-let tasks = [...tasksData];
+// Normalize task status values to match TASK_STATUSES constants
+const normalizeStatus = (status) => {
+  const statusMap = {
+    'todo': 'To Do',
+    'in-progress': 'In Progress',
+    'review': 'Review',
+    'completed': 'Completed',
+    'cancelled': 'Cancelled'
+  }
+  return statusMap[status] || status
+}
+
+let tasks = tasksData.map(task => ({
+  ...task,
+  status: normalizeStatus(task.status)
+}));
 
 // Utility functions
 const delay = (ms = 200) => new Promise(resolve => setTimeout(resolve, ms));
