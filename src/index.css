@@ -1,0 +1,82 @@
+@import 'react-toastify/dist/ReactToastify.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: theme('colors.slate.50');
+    color: theme('colors.slate.900');
+  }
+
+  .dark body {
+    background: theme('colors.slate.900');
+    color: theme('colors.slate.100');
+  }
+}
+
+@layer components {
+  .sidebar-nav-item {
+    @apply flex items-center gap-3 px-4 py-3 text-slate-700 hover:text-primary-600 hover:bg-slate-100 rounded-lg transition-colors duration-150 cursor-pointer;
+  }
+  
+  .sidebar-nav-item.active {
+    @apply text-primary-600 bg-primary-50 border-l-4 border-l-accent-500;
+  }
+  
+  .dark .sidebar-nav-item {
+    @apply text-slate-300 hover:text-white hover:bg-slate-800;
+  }
+  
+  .dark .sidebar-nav-item.active {
+    @apply text-white bg-slate-800 border-l-accent-500;
+  }
+
+  .metric-card {
+    @apply bg-white dark:bg-slate-800 rounded-lg p-6 shadow-sm border border-slate-200 dark:border-slate-700;
+  }
+  
+  .metric-card:hover {
+    @apply shadow-md transform -translate-y-0.5 transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-150;
+  }
+  
+  .btn-secondary {
+    @apply bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-medium transition-colors duration-150;
+  }
+}
+
+/* Toast Customization */
+.Toastify__toast-container {
+  @apply z-50;
+}
+
+.Toastify__toast {
+  @apply rounded-lg shadow-lg;
+}
+
+.Toastify__toast--success {
+  @apply bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-l-4 border-l-success-500;
+}
+
+.Toastify__toast--error {
+  @apply bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-l-4 border-l-error-500;
+}
+
+.Toastify__toast--warning {
+  @apply bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-l-4 border-l-warning-500;
+}
+
+.Toastify__toast--info {
+  @apply bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-l-4 border-l-accent-500;
+}

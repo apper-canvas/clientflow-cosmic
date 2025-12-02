@@ -1,0 +1,137 @@
+[
+  {
+    "Id": 1,
+    "type": "expense",
+    "action": "created",
+    "entityId": "1",
+    "description": "Added new expense: Adobe Creative Suite subscription - $299.00",
+    "timestamp": "2024-01-15T09:30:00Z",
+    "user": "John Doe"
+  },
+  {
+    "Id": 2,
+    "type": "project",
+    "action": "updated",
+    "entityId": "1",
+    "description": "Updated project progress: E-commerce Platform Development to 65%",
+    "timestamp": "2024-01-14T16:45:00Z",
+    "user": "Sarah Smith"
+  },
+  {
+    "Id": 3,
+    "type": "invoice",
+    "action": "sent",
+    "entityId": "3",
+    "description": "Sent invoice INV-2024-003 to TechStart Solutions - $35,000",
+    "timestamp": "2024-01-14T11:20:00Z",
+    "user": "Mike Johnson"
+  },
+  {
+    "Id": 4,
+    "type": "task",
+    "action": "completed",
+    "entityId": "6",
+    "description": "Completed task: Conduct user research for Mobile App Redesign",
+    "timestamp": "2024-01-13T14:30:00Z",
+    "user": "Emily Davis"
+  },
+  {
+    "Id": 5,
+    "type": "expense",
+    "action": "approved",
+    "entityId": "5",
+    "description": "Approved expense: Client lunch meeting - $156.78",
+    "timestamp": "2024-01-13T10:15:00Z",
+    "user": "Lisa Chen"
+  },
+  {
+    "Id": 6,
+    "type": "project",
+    "action": "created",
+    "entityId": "10",
+    "description": "Created new project: API Integration Project for TechStart Solutions",
+    "timestamp": "2024-01-12T13:45:00Z",
+    "user": "John Doe"
+  },
+  {
+    "Id": 7,
+    "type": "client",
+    "action": "updated",
+    "entityId": "2",
+    "description": "Updated client information: Verde Retail Group contact details",
+    "timestamp": "2024-01-11T15:20:00Z",
+    "user": "Sarah Smith"
+  },
+  {
+    "Id": 8,
+    "type": "task",
+    "action": "assigned",
+    "entityId": "19",
+    "description": "Assigned urgent task: Payment processing integration to Mike Johnson",
+    "timestamp": "2024-01-11T09:30:00Z",
+    "user": "John Doe"
+  },
+  {
+    "Id": 9,
+    "type": "expense",
+    "action": "rejected",
+    "entityId": "9",
+    "description": "Rejected expense: Round trip flight for client consultation - $342.15",
+    "timestamp": "2024-01-10T17:00:00Z",
+    "user": "Mike Johnson"
+  },
+  {
+    "Id": 10,
+    "type": "invoice",
+    "action": "paid",
+    "entityId": "4",
+    "description": "Invoice INV-2024-004 marked as paid - $12,000 from Innovate Digital Agency",
+    "timestamp": "2024-01-10T14:22:00Z",
+    "user": "Lisa Chen"
+  },
+  {
+    "Id": 11,
+    "type": "project",
+    "action": "status_changed",
+    "entityId": "5",
+    "description": "Project status changed: Donation Platform set to on-hold",
+    "timestamp": "2024-01-09T11:45:00Z",
+    "user": "Emily Davis"
+  },
+  {
+    "Id": 12,
+    "type": "expense",
+    "action": "reimbursed",
+    "entityId": "2",
+    "description": "Reimbursed expense: Office supplies and stationery - $145.67",
+    "timestamp": "2024-01-08T16:30:00Z",
+    "user": "Sarah Smith"
+  },
+  {
+    "Id": 13,
+    "type": "task",
+    "action": "created",
+    "entityId": "20",
+    "description": "Created task: User testing and feedback collection for Mobile App Redesign",
+    "timestamp": "2024-01-08T12:15:00Z",
+    "user": "Emily Davis"
+  },
+  {
+    "Id": 14,
+    "type": "client",
+    "action": "deactivated",
+    "entityId": "5",
+    "description": "Client account deactivated: Johnson Consulting",
+    "timestamp": "2024-01-07T10:00:00Z",
+    "user": "John Doe"
+  },
+  {
+    "Id": 15,
+    "type": "project",
+    "action": "deadline_updated",
+    "entityId": "4",
+    "description": "Updated deadline: Website Redesign & Development extended to March 1, 2024",
+    "timestamp": "2024-01-06T13:30:00Z",
+    "user": "Maria Garcia"
+  }
+]

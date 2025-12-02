@@ -1,0 +1,57 @@
+[
+  {
+    "Id": 1,
+    "name": "Sarah Chen",
+    "company": "TechStart Solutions",
+    "email": "sarah.chen@techstart.com",
+    "phone": "+1 (555) 123-4567",
+    "industry": "Technology",
+    "status": "active",
+    "totalRevenue": 125000,
+    "createdAt": "2023-08-15T08:00:00Z"
+  },
+  {
+    "Id": 2,
+    "name": "Michael Rodriguez",
+    "company": "Verde Retail Group",
+    "email": "m.rodriguez@verde-retail.com",
+    "phone": "+1 (555) 234-5678",
+    "industry": "Retail",
+    "status": "active",
+    "totalRevenue": 89500,
+    "createdAt": "2023-09-22T10:30:00Z"
+  },
+  {
+    "Id": 3,
+    "name": "Emily Thompson",
+    "company": "Helping Hands Foundation",
+    "email": "emily@helpinghands.org",
+    "phone": "+1 (555) 345-6789",
+    "industry": "Non-profit",
+    "status": "active",
+    "totalRevenue": 45000,
+    "createdAt": "2023-10-05T14:20:00Z"
+  },
+  {
+    "Id": 4,
+    "name": "David Park",
+    "company": "Innovate Digital Agency",
+    "email": "david.park@innovatedigital.com",
+    "phone": "+1 (555) 456-7890",
+    "industry": "Marketing",
+    "status": "active",
+    "totalRevenue": 78900,
+    "createdAt": "2023-11-12T11:45:00Z"
+  },
+  {
+    "Id": 5,
+    "name": "Lisa Johnson",
+    "company": "Johnson Consulting",
+    "email": "lisa@johnsonconsulting.biz",
+    "phone": "+1 (555) 567-8901",
+    "industry": "Consulting",
+    "status": "inactive",
+    "totalRevenue": 32000,
+    "createdAt": "2023-07-28T16:10:00Z"
+  }
+]

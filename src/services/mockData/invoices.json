@@ -1,0 +1,97 @@
+[
+  {
+    "Id": 1,
+    "clientId": 1,
+    "projectId": 1,
+    "invoiceNumber": "INV-2024-001",
+    "amount": 25000,
+    "status": "paid",
+    "issueDate": "2023-12-01",
+    "dueDate": "2023-12-31",
+    "paidDate": "2023-12-28",
+    "items": [
+      {
+        "description": "E-commerce Platform Development - Phase 1",
+        "quantity": 1,
+        "rate": 25000,
+        "amount": 25000
+      }
+    ]
+  },
+  {
+    "Id": 2,
+    "clientId": 2,
+    "projectId": 3,
+    "invoiceNumber": "INV-2024-002",
+    "amount": 18000,
+    "status": "paid",
+    "issueDate": "2023-11-15",
+    "dueDate": "2023-12-15",
+    "paidDate": "2023-12-10",
+    "items": [
+      {
+        "description": "Brand Identity Package - Complete",
+        "quantity": 1,
+        "rate": 18000,
+        "amount": 18000
+      }
+    ]
+  },
+  {
+    "Id": 3,
+    "clientId": 1,
+    "projectId": 1,
+    "invoiceNumber": "INV-2024-003",
+    "amount": 35000,
+    "status": "sent",
+    "issueDate": "2024-01-01",
+    "dueDate": "2024-01-31",
+    "paidDate": null,
+    "items": [
+      {
+        "description": "E-commerce Platform Development - Phase 2",
+        "quantity": 1,
+        "rate": 35000,
+        "amount": 35000
+      }
+    ]
+  },
+  {
+    "Id": 4,
+    "clientId": 4,
+    "projectId": 8,
+    "invoiceNumber": "INV-2024-004",
+    "amount": 12000,
+    "status": "paid",
+    "issueDate": "2023-11-30",
+    "dueDate": "2023-12-30",
+    "paidDate": "2023-12-22",
+    "items": [
+      {
+        "description": "Social Media Campaign - 3 Months",
+        "quantity": 1,
+        "rate": 12000,
+        "amount": 12000
+      }
+    ]
+  },
+  {
+    "Id": 5,
+    "clientId": 2,
+    "projectId": 4,
+    "invoiceNumber": "INV-2024-005",
+    "amount": 15000,
+    "status": "overdue",
+    "issueDate": "2023-12-15",
+    "dueDate": "2024-01-15",
+    "paidDate": null,
+    "items": [
+      {
+        "description": "Website Redesign - Milestone 1",
+        "quantity": 1,
+        "rate": 15000,
+        "amount": 15000
+      }
+    ]
+  }
+]
