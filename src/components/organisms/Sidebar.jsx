@@ -7,7 +7,7 @@ import { cn } from "@/utils/cn"
 const Sidebar = ({ isOpen, onToggle }) => {
   const location = useLocation()
   
-  const navigationItems = [
+const navigationItems = [
     {
       name: "Dashboard",
       href: "/",
@@ -16,11 +16,10 @@ const Sidebar = ({ isOpen, onToggle }) => {
     {
       name: "Clients",
       href: "/clients",
-      icon: "Users",
-      comingSoon: true
+      icon: "Users"
     },
     {
-name: "Projects",
+      name: "Projects",
       href: "/projects",
       icon: "Folder"
     },

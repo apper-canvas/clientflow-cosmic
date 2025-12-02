@@ -3,6 +3,8 @@ import { Suspense, lazy } from "react"
 
 const Layout = lazy(() => import("@/components/organisms/Layout"))
 const Dashboard = lazy(() => import("@/components/pages/Dashboard"))
+const Clients = lazy(() => import("@/components/pages/Clients"))
+const ClientDetail = lazy(() => import("@/components/pages/ClientDetail"))
 const Expenses = lazy(() => import("@/components/pages/Expenses"))
 const Projects = lazy(() => import("@/components/pages/Projects"))
 const ProjectDetail = lazy(() => import("@/components/pages/ProjectDetail"))
@@ -33,9 +35,17 @@ const mainRoutes = [
   },
   {
     path: "clients",
+element: (
+      <Suspense fallback={suspenseFallback}>
+        <Clients />
+      </Suspense>
+    ),
+  },
+  {
+    path: "clients/:id",
     element: (
       <Suspense fallback={suspenseFallback}>
-        <ComingSoon feature="Clients" />
+        <ClientDetail />
       </Suspense>
     ),
   },
