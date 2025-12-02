@@ -259,14 +259,13 @@ const handleClose = () => {
     return project?.name || `Project ${projectId}`
   }
 
-  const handleDependencyChange = (field, taskId, checked) => {
+const handleDependencyChange = (field, taskId, checked) => {
     setFormData(prev => ({
       ...prev,
       [field]: checked 
         ? [...prev[field], parseInt(taskId)]
         : prev[field].filter(id => id !== parseInt(taskId))
     }))
-}))
   }
 
   // Tag management functions
