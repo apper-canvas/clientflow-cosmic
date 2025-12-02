@@ -1,7 +1,6 @@
-import clientsData from "@/services/mockData/clients.json"
+import clientsData from "@/services/mockData/clients.json";
 
-let clients = [...clientsData]
-
+let clients = [...clientsData];
 const clientService = {
   async getAll() {
     await new Promise(resolve => setTimeout(resolve, 300))
@@ -104,7 +103,56 @@ const clientService = {
     
     if (!status) return [...clients]
     
-    return clients.filter(client => client.status === status)
+return clients.filter(client => client.status === status)
+  },
+// Bulk operations
+  async getByIds(ids) {
+    await new Promise(resolve => setTimeout(resolve, 200))
+    return clients.filter(client => ids.includes(client.Id)).map(client => ({ ...client }))
+  },
+
+  async updateMultiple(ids, updateData) {
+    await new Promise(resolve => setTimeout(resolve, 400))
+    const updatedClients = []
+    
+    for (const id of ids) {
+      const index = clients.findIndex(c => c.Id === parseInt(id))
+      if (index !== -1) {
+        const updatedClient = {
+          ...clients[index],
+          ...updateData,
+          Id: parseInt(id),
+          updatedAt: new Date().toISOString()
+        }
+        clients[index] = updatedClient
+        updatedClients.push({ ...updatedClient })
+      }
+    }
+    
+    return updatedClients
+  },
+
+  async exportToCsv(ids = null) {
+    await new Promise(resolve => setTimeout(resolve, 300))
+    const clientsToExport = ids ? clients.filter(c => ids.includes(c.Id)) : clients
+    
+    const headers = ['Id', 'Name', 'Company', 'Email', 'Phone', 'Industry', 'Status', 'Total Revenue', 'Created At']
+    const csvContent = [
+      headers.join(','),
+      ...clientsToExport.map(client => [
+        client.Id,
+        `"${client.name}"`,
+        `"${client.company || ''}"`,
+        client.email,
+        client.phone || '',
+        client.industry || '',
+        client.status,
+        client.totalRevenue || 0,
+        client.createdAt
+      ].join(','))
+    ].join('\n')
+    
+    return csvContent
   }
 }
 
