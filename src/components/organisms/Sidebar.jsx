@@ -23,11 +23,10 @@ const navigationItems = [
       href: "/projects",
       icon: "Folder"
     },
-    {
+{
       name: "Tasks",
       href: "/tasks",
-      icon: "CheckSquare",
-      comingSoon: true
+      icon: "CheckSquare"
     },
     {
       name: "Time Tracking",
