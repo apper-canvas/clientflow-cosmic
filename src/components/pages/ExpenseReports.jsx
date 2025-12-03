@@ -69,6 +69,16 @@ const getEmployeeName = (employeeId) => {
     const employee = clients.find(c => c.Id === employeeId)
     return employee ? `${employee.name} - ${employee.company}` : 'Unknown Employee'
   }
+const formatCategoryName = (category) => {
+    if (!category) return 'Uncategorized'
+    return category.charAt(0).toUpperCase() + category.slice(1).replace(/([A-Z])/g, ' $1').trim()
+  }
+
+  const getProjectName = (projectId) => {
+    if (!projectId || projectId === 'unassigned') return 'Unassigned'
+    // Since projects data isn't loaded in this component, return a fallback
+    return `Project ${projectId}`
+  }
 
   const formatCurrency = (amount) => `$${amount.toLocaleString()}`
 
