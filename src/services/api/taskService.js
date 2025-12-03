@@ -6,6 +6,21 @@ let tasks = [...mockTasks];
 let nextId = Math.max(...tasks.map(t => t.Id)) + 1;
 let nextCommentId = Math.max(...tasks.flatMap(t => t.comments?.map(c => c.id) || [])) + 1;
 let nextAttachmentId = Math.max(...tasks.flatMap(t => t.attachments?.map(a => a.id) || [])) + 1;
+// Task priority constants for filtering and display
+export const TASK_PRIORITIES = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  URGENT: 'Urgent'
+};
+
+// Task type constants for categorization
+export const TASK_TYPES = {
+  TASK: 'Task',
+  BUG: 'Bug',
+  FEATURE: 'Feature',
+  EPIC: 'Epic'
+};
 
 // Task status constants for Kanban board
 export const TASK_STATUSES = {
@@ -15,7 +30,6 @@ export const TASK_STATUSES = {
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled'
 };
-
 // Simulate network delay
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
