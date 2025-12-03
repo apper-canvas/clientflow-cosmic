@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import { toast } from "react-toastify";
+import StatusBadge from "@/components/molecules/StatusBadge";
 import expenseService from "@/services/api/expenseService";
 import clientService from "@/services/api/clientService";
 import ApperIcon from "@/components/ApperIcon";
@@ -13,11 +14,10 @@ import ExpenseTable from "@/components/organisms/ExpenseTable";
 import Expenses from "@/components/pages/Expenses";
 import Clients from "@/components/pages/Clients";
 import MetricCard from "@/components/molecules/MetricCard";
-import StatusBadge from "@/components/atoms/StatusBadge";
 
-const TaxReports = () => {
-  const [taxReportData, setTaxReportData] = useState(null);
+const ExpenseReports = () => {
   const [clients, setClients] = useState([]);
+  const [taxReportData, setTaxReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
@@ -367,7 +367,6 @@ const TaxReports = () => {
   );
 };
 
-export default TaxReports;
 const EmployeeExpenseReport = () => {
   const [reportData, setReportData] = useState(null)
   const [clients, setClients] = useState([])
@@ -917,7 +916,10 @@ if (loading) return <Loading type="page" />
           onDelete={(expense) => toast.info("Delete functionality would be implemented here")}
           onStatusChange={(expense, status) => toast.info("Status change functionality would be implemented here")}
         />
-      </div>
 </div>
-  )
-}
+    </div>
+  );
+};
+
+export default ExpenseReports;
+export { EmployeeExpenseReport };

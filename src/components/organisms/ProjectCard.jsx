@@ -1,7 +1,7 @@
 import { format, differenceInDays } from "date-fns"
 import { useState } from "react"
 import Button from "@/components/atoms/Button"
-import StatusBadge from "@/components/molecules/StatusBadge"
+import StatusBadge from '@/components/molecules/StatusBadge'
 import ApperIcon from "@/components/ApperIcon"
 
 const ProjectCard = ({ 
