@@ -1,4 +1,5 @@
-import { toast } from 'react-toastify';
+import { toast } from "react-toastify";
+import React from "react";
 
 // Mock data for time entries
 let timeEntries = [
@@ -17,8 +18,12 @@ let timeEntries = [
     hourlyRate: 85,
     totalAmount: 212.50,
     status: "approved",
+    submittedAt: "2024-01-15T11:35:00Z",
+    approvedAt: "2024-01-15T14:20:00Z",
+    approvedBy: "Mike Chen",
+    rejectionReason: null,
     createdAt: "2024-01-15T09:00:00Z",
-    updatedAt: "2024-01-15T11:30:00Z"
+    updatedAt: "2024-01-15T14:20:00Z"
   },
   {
     Id: 2,
@@ -34,9 +39,13 @@ let timeEntries = [
     billable: true,
     hourlyRate: 95,
     totalAmount: 380,
-    status: "pending",
+    status: "submitted",
+    submittedAt: "2024-01-15T17:05:00Z",
+    approvedAt: null,
+    approvedBy: null,
+    rejectionReason: null,
     createdAt: "2024-01-15T13:00:00Z",
-    updatedAt: "2024-01-15T17:00:00Z"
+    updatedAt: "2024-01-15T17:05:00Z"
   },
   {
     Id: 3,
@@ -53,10 +62,70 @@ let timeEntries = [
     hourlyRate: 85,
     totalAmount: 0,
     status: "draft",
+    submittedAt: null,
+    approvedAt: null,
+    approvedBy: null,
+    rejectionReason: null,
     createdAt: "2024-01-14T10:00:00Z",
     updatedAt: "2024-01-14T12:00:00Z"
+  },
+  {
+    Id: 4,
+    taskId: 2,
+    projectId: 1,
+    userId: 3,
+    userName: "Lisa Wong",
+    date: "2024-01-16",
+    startTime: "09:30",
+    endTime: "12:30",
+    duration: 3,
+    description: "Code review and testing",
+    billable: true,
+    hourlyRate: 90,
+    totalAmount: 270,
+    status: "rejected",
+    submittedAt: "2024-01-16T12:35:00Z",
+    approvedAt: null,
+    approvedBy: null,
+    rejectionReason: "Please provide more detailed description of testing activities",
+    rejectedAt: "2024-01-16T15:20:00Z",
+    rejectedBy: "Mike Chen",
+    createdAt: "2024-01-16T09:30:00Z",
+    updatedAt: "2024-01-16T15:20:00Z"
+  },
+  {
+    Id: 5,
+    taskId: 1,
+    projectId: 1,
+    userId: 1,
+    userName: "Sarah Johnson",
+    date: "2024-01-12",
+    startTime: "14:00",
+    endTime: "18:00",
+    duration: 4,
+    description: "Final mockup revisions and client presentation",
+    billable: true,
+    hourlyRate: 85,
+    totalAmount: 340,
+    status: "invoiced",
+    submittedAt: "2024-01-12T18:05:00Z",
+    approvedAt: "2024-01-13T09:15:00Z",
+    approvedBy: "Mike Chen",
+    invoicedAt: "2024-01-14T16:30:00Z",
+    rejectionReason: null,
+    createdAt: "2024-01-12T14:00:00Z",
+    updatedAt: "2024-01-14T16:30:00Z"
   }
 ];
+
+// Status constants
+export const TIME_ENTRY_STATUSES = {
+  DRAFT: 'draft',
+  SUBMITTED: 'submitted', 
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+  INVOICED: 'invoiced'
+};
 
 let activeTimers = [
   // {
@@ -122,9 +191,13 @@ const timeTrackingService = {
       duration: parseFloat(duration) || 0,
       description: entryData.description || "",
       billable: entryData.billable || false,
-      hourlyRate: parseFloat(hourlyRate),
+hourlyRate: parseFloat(hourlyRate),
       totalAmount: parseFloat(totalAmount.toFixed(2)),
-      status: entryData.status || "draft",
+      status: TIME_ENTRY_STATUSES.DRAFT,
+      submittedAt: null,
+      approvedAt: null,
+      approvedBy: null,
+      rejectionReason: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -160,11 +233,10 @@ const timeTrackingService = {
       ...timeEntries[index],
       ...entryData,
       duration: parseFloat(finalDuration),
-      hourlyRate: parseFloat(hourlyRate),
+hourlyRate: parseFloat(hourlyRate),
       totalAmount: parseFloat(totalAmount.toFixed(2)),
       updatedAt: new Date().toISOString()
     };
-
     timeEntries[index] = updatedEntry;
     toast.success('Time entry updated successfully');
     return { ...updatedEntry };
@@ -238,9 +310,9 @@ const timeTrackingService = {
         endTime: now.toTimeString().slice(0, 5),
         duration: parseFloat(duration.toFixed(2)),
         description: timer.description,
-        billable: false, // Default to non-billable
+billable: false, // Default to non-billable
         hourlyRate: 0,
-        status: "draft"
+        status: TIME_ENTRY_STATUSES.DRAFT
       });
       
       toast.success('Timer stopped and time entry created');
@@ -278,8 +350,151 @@ const timeTrackingService = {
 
     timer.isPaused = false;
     delete timer.pauseStartTime;
+return { ...timer };
+  },
+
+  // Submit time entry for approval
+  submitForApproval: async (entryId) => {
+    await delay(500);
+    const entry = timeEntries.find(e => e.Id === entryId);
+    if (!entry) {
+      throw new Error('Time entry not found');
+    }
+    if (entry.status !== TIME_ENTRY_STATUSES.DRAFT) {
+      throw new Error('Only draft entries can be submitted for approval');
+    }
     
-    return { ...timer };
+    entry.status = TIME_ENTRY_STATUSES.SUBMITTED;
+    entry.submittedAt = new Date().toISOString();
+    entry.updatedAt = new Date().toISOString();
+    
+    return { ...entry };
+  },
+
+  // Approve time entry
+  approveEntry: async (entryId, approverName = 'Project Manager') => {
+    await delay(500);
+    const entry = timeEntries.find(e => e.Id === entryId);
+    if (!entry) {
+      throw new Error('Time entry not found');
+    }
+    if (entry.status !== TIME_ENTRY_STATUSES.SUBMITTED) {
+      throw new Error('Only submitted entries can be approved');
+    }
+    
+    entry.status = TIME_ENTRY_STATUSES.APPROVED;
+    entry.approvedAt = new Date().toISOString();
+    entry.approvedBy = approverName;
+    entry.rejectionReason = null;
+    entry.updatedAt = new Date().toISOString();
+    
+    return { ...entry };
+  },
+
+  // Reject time entry
+  rejectEntry: async (entryId, reason, rejectorName = 'Project Manager') => {
+    await delay(500);
+    const entry = timeEntries.find(e => e.Id === entryId);
+    if (!entry) {
+      throw new Error('Time entry not found');
+    }
+    if (entry.status !== TIME_ENTRY_STATUSES.SUBMITTED) {
+      throw new Error('Only submitted entries can be rejected');
+    }
+    
+    entry.status = TIME_ENTRY_STATUSES.REJECTED;
+    entry.rejectionReason = reason;
+    entry.rejectedAt = new Date().toISOString();
+    entry.rejectedBy = rejectorName;
+    entry.approvedAt = null;
+    entry.approvedBy = null;
+    entry.updatedAt = new Date().toISOString();
+    
+    return { ...entry };
+  },
+
+  // Get approval queue (submitted entries)
+  getApprovalQueue: async () => {
+    await delay(300);
+    return timeEntries.filter(entry => entry.status === TIME_ENTRY_STATUSES.SUBMITTED)
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+  },
+
+  // Bulk approve entries
+  bulkApproveEntries: async (entryIds, approverName = 'Project Manager') => {
+    await delay(800);
+    const results = [];
+    
+    for (const entryId of entryIds) {
+      const entry = timeEntries.find(e => e.Id === entryId);
+      if (entry && entry.status === TIME_ENTRY_STATUSES.SUBMITTED) {
+        entry.status = TIME_ENTRY_STATUSES.APPROVED;
+        entry.approvedAt = new Date().toISOString();
+        entry.approvedBy = approverName;
+        entry.rejectionReason = null;
+        entry.updatedAt = new Date().toISOString();
+        results.push({ ...entry });
+      }
+    }
+    
+    return results;
+  },
+
+  // Bulk reject entries
+  bulkRejectEntries: async (entryIds, reason, rejectorName = 'Project Manager') => {
+    await delay(800);
+    const results = [];
+    
+    for (const entryId of entryIds) {
+      const entry = timeEntries.find(e => e.Id === entryId);
+      if (entry && entry.status === TIME_ENTRY_STATUSES.SUBMITTED) {
+        entry.status = TIME_ENTRY_STATUSES.REJECTED;
+        entry.rejectionReason = reason;
+        entry.rejectedAt = new Date().toISOString();
+        entry.rejectedBy = rejectorName;
+        entry.approvedAt = null;
+        entry.approvedBy = null;
+        entry.updatedAt = new Date().toISOString();
+        results.push({ ...entry });
+      }
+    }
+    
+    return results;
+  },
+
+  // Mark entry as invoiced (only approved entries)
+  markAsInvoiced: async (entryId) => {
+    await delay(500);
+    const entry = timeEntries.find(e => e.Id === entryId);
+    if (!entry) {
+      throw new Error('Time entry not found');
+    }
+    if (entry.status !== TIME_ENTRY_STATUSES.APPROVED) {
+      throw new Error('Only approved entries can be marked as invoiced');
+    }
+    
+    entry.status = TIME_ENTRY_STATUSES.INVOICED;
+    entry.invoicedAt = new Date().toISOString();
+    entry.updatedAt = new Date().toISOString();
+    
+    return { ...entry };
+  },
+
+  // Get entries by status
+  getEntriesByStatus: async (status) => {
+    await delay(300);
+    return timeEntries.filter(entry => entry.status === status)
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  },
+
+  // Check if entry can be edited
+  canEditEntry: (entry) => {
+    return entry.status === TIME_ENTRY_STATUSES.DRAFT || entry.status === TIME_ENTRY_STATUSES.REJECTED;
+  },
+
+  // Check if entry can be deleted
+  canDeleteEntry: (entry) => {
+    return entry.status === TIME_ENTRY_STATUSES.DRAFT || entry.status === TIME_ENTRY_STATUSES.REJECTED;
   }
 };
 

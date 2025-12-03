@@ -1,17 +1,19 @@
-import { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addDays, subDays, addMonths, subMonths } from 'date-fns';
-import { toast } from 'react-toastify';
-import timeTrackingService from '@/services/api/timeTrackingService';
-import taskService from '@/services/api/taskService';
-import projectService from '@/services/api/projectService';
-import Button from '@/components/atoms/Button';
-import Input from '@/components/atoms/Input';
-import Select from '@/components/atoms/Select';
-import Label from '@/components/atoms/Label';
-import ApperIcon from '@/components/ApperIcon';
-import Loading from '@/components/ui/Loading';
-import Empty from '@/components/ui/Empty';
-import { cn } from '@/utils/cn';
+import React, { useEffect, useState } from "react";
+import { addDays, addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, startOfMonth, startOfWeek, subDays, subMonths } from "date-fns";
+import { toast } from "react-toastify";
+import projectService from "@/services/api/projectService";
+import timeTrackingService from "@/services/api/timeTrackingService";
+import taskService from "@/services/api/taskService";
+import ApperIcon from "@/components/ApperIcon";
+import Loading from "@/components/ui/Loading";
+import Empty from "@/components/ui/Empty";
+import Select from "@/components/atoms/Select";
+import Label from "@/components/atoms/Label";
+import Button from "@/components/atoms/Button";
+import Input from "@/components/atoms/Input";
+import Tasks from "@/components/pages/Tasks";
+import Projects from "@/components/pages/Projects";
+import { cn } from "@/utils/cn";
 
 const TimeTracking = () => {
   const [timeEntries, setTimeEntries] = useState([]);
@@ -24,7 +26,7 @@ const TimeTracking = () => {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
 
-  // Filters
+// Filters
   const [filters, setFilters] = useState({
     taskId: '',
     projectId: '',
@@ -33,6 +35,12 @@ const TimeTracking = () => {
     billable: '',
     status: ''
   });
+
+  // Approval queue state
+  const [showApprovalQueue, setShowApprovalQueue] = useState(false);
+  const [approvalEntries, setApprovalEntries] = useState([]);
+  const [selectedEntries, setSelectedEntries] = useState([]);
+  const [bulkAction, setBulkAction] = useState('');
 
   // Load data
   const loadData = async () => {
@@ -95,7 +103,7 @@ const TimeTracking = () => {
     if (filters.billable !== '') {
       filtered = filtered.filter(entry => entry.billable === (filters.billable === 'true'));
     }
-    if (filters.status) {
+if (filters.status) {
       filtered = filtered.filter(entry => entry.status === filters.status);
     }
     if (filters.dateFrom) {
@@ -171,7 +179,80 @@ const TimeTracking = () => {
       console.error('Error updating entry:', err);
     }
   };
+// Load approval queue
+  const loadApprovalQueue = async () => {
+    try {
+      const queue = await timeTrackingService.getApprovalQueue();
+      setApprovalEntries(queue);
+    } catch (err) {
+      toast.error('Failed to load approval queue');
+      console.error('Error loading approval queue:', err);
+    }
+  };
 
+  // Handle approval actions
+  const handleApproveEntry = async (entryId) => {
+    try {
+      await timeTrackingService.approveEntry(entryId);
+      toast.success('Time entry approved');
+      loadData();
+      loadApprovalQueue();
+    } catch (err) {
+      toast.error('Failed to approve entry');
+      console.error('Error approving entry:', err);
+    }
+  };
+
+  const handleRejectEntry = async (entryId) => {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason) return;
+    
+    try {
+      await timeTrackingService.rejectEntry(entryId, reason);
+      toast.success('Time entry rejected');
+      loadData();
+      loadApprovalQueue();
+    } catch (err) {
+      toast.error('Failed to reject entry');
+      console.error('Error rejecting entry:', err);
+    }
+  };
+
+  const handleSubmitForApproval = async (entryId) => {
+    try {
+      await timeTrackingService.submitForApproval(entryId);
+      toast.success('Time entry submitted for approval');
+      loadData();
+      loadApprovalQueue();
+    } catch (err) {
+      toast.error('Failed to submit for approval');
+      console.error('Error submitting for approval:', err);
+    }
+  };
+
+  const handleBulkAction = async () => {
+    if (!bulkAction || selectedEntries.length === 0) return;
+    
+    try {
+      if (bulkAction === 'approve') {
+        await timeTrackingService.bulkApproveEntries(selectedEntries);
+        toast.success(`${selectedEntries.length} entries approved`);
+      } else if (bulkAction === 'reject') {
+        const reason = prompt('Please provide a reason for bulk rejection:');
+        if (!reason) return;
+        await timeTrackingService.bulkRejectEntries(selectedEntries, reason);
+        toast.success(`${selectedEntries.length} entries rejected`);
+      }
+      
+      setSelectedEntries([]);
+      setBulkAction('');
+      loadData();
+      loadApprovalQueue();
+    } catch (err) {
+      toast.error('Failed to perform bulk action');
+      console.error('Error performing bulk action:', err);
+    }
+  };
   const handleDeleteEntry = async (entryId) => {
     if (!confirm('Are you sure you want to delete this time entry?')) return;
     
@@ -293,7 +374,7 @@ const TimeTracking = () => {
               <Empty
                 title="No time entries"
                 description="No time entries found for this day"
-                actionLabel="Add Entry"
+actionLabel="Add Entry"
                 onAction={() => setShowTimeEntryForm(true)}
               />
             ) : (
@@ -314,12 +395,14 @@ const TimeTracking = () => {
                               Billable
                             </span>
                           )}
-                          <span className={`text-xs px-2 py-1 rounded ${
+                          <span className={`text-xs px-2 py-1 rounded font-medium ${
                             entry.status === 'approved' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                            entry.status === 'pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                            entry.status === 'submitted' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
+                            entry.status === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                            entry.status === 'invoiced' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' :
                             'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                           }`}>
-                            {entry.status}
+                            {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
                           </span>
                         </div>
                         <div className="text-sm text-slate-600 dark:text-slate-400">
@@ -335,6 +418,12 @@ const TimeTracking = () => {
                             </span>
                           )}
                         </div>
+                        {entry.rejectionReason && (
+                          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">
+                            <span className="font-medium">Rejection Reason: </span>
+                            {entry.rejectionReason}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -447,7 +536,8 @@ const TimeTracking = () => {
               <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Description</th>
               <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Time</th>
               <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Duration</th>
-              <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Billable</th>
+<th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Billable</th>
+              <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Status</th>
               <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Amount</th>
               <th className="text-center p-4 font-medium text-slate-900 dark:text-slate-100">Actions</th>
             </tr>
@@ -455,7 +545,7 @@ const TimeTracking = () => {
           <tbody>
             {filteredEntries.map(entry => {
               const task = tasks.find(t => t.Id === entry.taskId);
-              const project = projects.find(p => p.Id === entry.projectId);
+const project = projects.find(p => p.Id === entry.projectId);
               
               return (
                 <tr key={entry.Id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/50">
@@ -484,6 +574,17 @@ const TimeTracking = () => {
                         : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
                     }`}>
                       {entry.billable ? 'Yes' : 'No'}
+</span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      entry.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                      entry.status === 'submitted' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                      entry.status === 'rejected' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
+                      entry.status === 'invoiced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' :
+                      'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
+                    }`}>
+                      {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
                     </span>
                   </td>
                   <td className="p-4 text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -510,7 +611,7 @@ const TimeTracking = () => {
                     </div>
                   </td>
                 </tr>
-              );
+);
             })}
           </tbody>
         </table>
@@ -549,8 +650,96 @@ const TimeTracking = () => {
             icon="RefreshCw"
           >
             Refresh
+</Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowApprovalQueue(true);
+              loadApprovalQueue();
+            }}
+            icon="CheckSquare"
+          >
+            Approval Queue
           </Button>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Select
+            value={filters.taskId}
+            onChange={(e) => setFilters(prev => ({ ...prev, taskId: e.target.value }))}
+          >
+            <option value="">All Tasks</option>
+            {tasks.map(task => (
+              <option key={task.Id} value={task.Id}>{task.title}</option>
+            ))}
+          </Select>
+          
+          <Select
+            value={filters.projectId}
+            onChange={(e) => setFilters(prev => ({ ...prev, projectId: e.target.value }))}
+          >
+            <option value="">All Projects</option>
+            {projects.map(project => (
+              <option key={project.Id} value={project.Id}>{project.name}</option>
+            ))}
+          </Select>
+          
+          <Select
+            value={filters.status}
+            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+          >
+            <option value="">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="submitted">Submitted</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="invoiced">Invoiced</option>
+          </Select>
+          
+          <Select
+            value={filters.billable}
+            onChange={(e) => setFilters(prev => ({ ...prev, billable: e.target.value }))}
+          >
+            <option value="">All Types</option>
+            <option value="true">Billable</option>
+            <option value="false">Non-Billable</option>
+          </Select>
+          
+          <Input
+            type="date"
+            value={filters.dateFrom}
+            onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+            placeholder="From date"
+          />
+          
+          <Input
+            type="date"
+            value={filters.dateTo}
+            onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+            placeholder="To date"
+          />
+        </div>
+        
+        {(filters.taskId || filters.projectId || filters.status || filters.billable || filters.dateFrom || filters.dateTo) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFilters({
+              taskId: '',
+              projectId: '',
+              dateFrom: '',
+              dateTo: '',
+              billable: '',
+              status: ''
+            })}
+            icon="X"
+          >
+            Clear
+          </Button>
+)}
       </div>
 
       {/* View Controls */}
@@ -632,13 +821,237 @@ const TimeTracking = () => {
           onSave={editingEntry ? handleUpdateEntry : handleCreateEntry}
           entry={editingEntry}
           tasks={tasks}
+projects={projects}
+        />
+      )}
+
+      {/* Approval Queue Modal */}
+      {showApprovalQueue && (
+        <ApprovalQueueModal
+          isOpen={showApprovalQueue}
+          onClose={() => {
+            setShowApprovalQueue(false);
+            setSelectedEntries([]);
+            setBulkAction('');
+          }}
+          entries={approvalEntries}
+          tasks={tasks}
           projects={projects}
+          onApprove={handleApproveEntry}
+          onReject={handleRejectEntry}
+          selectedEntries={selectedEntries}
+          onSelectEntries={setSelectedEntries}
+          bulkAction={bulkAction}
+          onBulkActionChange={setBulkAction}
+          onBulkActionExecute={handleBulkAction}
+          onRefresh={loadApprovalQueue}
         />
       )}
     </div>
   );
 };
 
+// Approval Queue Modal Component
+const ApprovalQueueModal = ({ 
+  isOpen, 
+  onClose, 
+  entries, 
+  tasks, 
+  projects, 
+  onApprove, 
+  onReject,
+  selectedEntries,
+  onSelectEntries,
+  bulkAction,
+  onBulkActionChange,
+  onBulkActionExecute,
+  onRefresh
+}) => {
+  if (!isOpen) return null;
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      onSelectEntries(entries.map(entry => entry.Id));
+    } else {
+      onSelectEntries([]);
+    }
+  };
+
+  const handleSelectEntry = (entryId, checked) => {
+    if (checked) {
+      onSelectEntries([...selectedEntries, entryId]);
+    } else {
+      onSelectEntries(selectedEntries.filter(id => id !== entryId));
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+              Approval Queue
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              {entries.length} entries pending approval
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" onClick={onRefresh} icon="RefreshCw" size="sm">
+              Refresh
+            </Button>
+            <Button variant="ghost" onClick={onClose} icon="X" size="sm" />
+          </div>
+        </div>
+
+        {/* Bulk Actions */}
+        {selectedEntries.length > 0 && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-700 dark:text-slate-300">
+                {selectedEntries.length} entries selected
+              </span>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={bulkAction}
+                  onChange={(e) => onBulkActionChange(e.target.value)}
+                  size="sm"
+                >
+                  <option value="">Bulk Actions</option>
+                  <option value="approve">Approve Selected</option>
+                  <option value="reject">Reject Selected</option>
+                </Select>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onBulkActionExecute}
+                  disabled={!bulkAction}
+                >
+                  Execute
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="overflow-y-auto max-h-[60vh]">
+          {entries.length === 0 ? (
+            <div className="p-8 text-center">
+              <ApperIcon name="CheckSquare" className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-1">
+                No entries pending approval
+              </h3>
+              <p className="text-slate-600 dark:text-slate-400">
+                All submitted time entries have been processed.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="p-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedEntries.length === entries.length}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="rounded border-slate-300 dark:border-slate-600"
+                      />
+                    </th>
+                    <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Employee</th>
+                    <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Date</th>
+                    <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Task</th>
+                    <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Project</th>
+                    <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Duration</th>
+                    <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Amount</th>
+                    <th className="text-left p-4 font-medium text-slate-900 dark:text-slate-100">Submitted</th>
+                    <th className="text-center p-4 font-medium text-slate-900 dark:text-slate-100">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map(entry => {
+                    const task = tasks.find(t => t.Id === entry.taskId);
+                    const project = projects.find(p => p.Id === entry.projectId);
+                    
+                    return (
+                      <tr key={entry.Id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                        <td className="p-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedEntries.includes(entry.Id)}
+                            onChange={(e) => handleSelectEntry(entry.Id, e.target.checked)}
+                            className="rounded border-slate-300 dark:border-slate-600"
+                          />
+                        </td>
+                        <td className="p-4 text-sm text-slate-900 dark:text-slate-100 font-medium">
+                          {entry.userName}
+                        </td>
+                        <td className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                          {format(new Date(entry.date), 'MMM d')}
+                        </td>
+                        <td className="p-4">
+                          <div className="text-sm text-slate-900 dark:text-slate-100 font-medium">
+                            {task?.title || 'Unknown Task'}
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400 max-w-xs truncate">
+                            {entry.description}
+                          </div>
+                        </td>
+                        <td className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                          {project?.name || '-'}
+                        </td>
+                        <td className="p-4">
+                          <div className="text-sm text-slate-900 dark:text-slate-100 font-medium">
+                            {entry.duration}h
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            {entry.startTime} - {entry.endTime}
+                          </div>
+                        </td>
+                        <td className="p-4 text-sm font-medium text-slate-900 dark:text-slate-100">
+                          {entry.billable ? `$${entry.totalAmount.toFixed(2)}` : '-'}
+                        </td>
+                        <td className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                          {format(new Date(entry.submittedAt), 'MMM d, HH:mm')}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2 justify-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onApprove(entry.Id)}
+                              icon="Check"
+                              className="text-green-600 border-green-600 hover:bg-green-50"
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onReject(entry.Id)}
+                              icon="X"
+                              className="text-red-600 border-red-600 hover:bg-red-50"
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+);
+};
 // Time Entry Form Component
 const TimeEntryForm = ({ isOpen, onClose, onSave, entry, tasks, projects }) => {
   const [formData, setFormData] = useState({
@@ -649,7 +1062,7 @@ const TimeEntryForm = ({ isOpen, onClose, onSave, entry, tasks, projects }) => {
     endTime: '',
     duration: '',
     description: '',
-    billable: false,
+billable: false,
     hourlyRate: 0,
     status: 'draft'
   });
@@ -843,7 +1256,7 @@ const TimeEntryForm = ({ isOpen, onClose, onSave, entry, tasks, projects }) => {
           </div>
         </form>
       </div>
-    </div>
+</div>
   );
 };
 
