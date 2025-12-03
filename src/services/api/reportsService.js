@@ -202,8 +202,7 @@ const reportsService = {
     
     return upcomingProjects.slice(0, 10)
   },
-
-  // Financial reports data
+// Financial reports data
   async getFinancialSummary(dateRange) {
     await delay(600)
     
@@ -233,6 +232,213 @@ const reportsService = {
       },
       expenseBreakdown: this.getExpensesByCategory(periodExpenses)
     }
+  },
+
+  // Revenue Analysis
+  async getRevenueAnalysis(dateRange, period = 'monthly') {
+    await delay(800)
+    
+    const { startDate, endDate } = dateRange
+    const periodInvoices = filterByDateRange(invoicesData, startDate, endDate, 'issueDate')
+    
+    const paidInvoices = periodInvoices.filter(inv => inv.status === 'paid')
+    const totalRevenue = paidInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+    const totalInvoiced = periodInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+    const outstanding = totalInvoiced - totalRevenue
+    
+    // Group by period
+    const revenueByPeriod = this.groupRevenueByPeriod(paidInvoices, period, startDate, endDate)
+    
+    return {
+      totalRevenue,
+      totalInvoiced,
+      outstanding,
+      averageInvoiceValue: paidInvoices.length > 0 ? totalRevenue / paidInvoices.length : 0,
+      collectionRate: totalInvoiced > 0 ? (totalRevenue / totalInvoiced) * 100 : 0,
+      revenueBreakdown: {
+        paid: totalRevenue,
+        invoiced: totalInvoiced,
+        outstanding: outstanding
+      },
+      trendData: revenueByPeriod,
+      invoiceCount: {
+        total: periodInvoices.length,
+        paid: paidInvoices.length,
+        pending: periodInvoices.filter(inv => ['sent', 'viewed'].includes(inv.status)).length,
+        overdue: periodInvoices.filter(inv => inv.status === 'overdue').length
+      }
+    }
+  },
+
+  // Revenue by Client
+  async getRevenueByClient(dateRange) {
+    await delay(700)
+    
+    const { startDate, endDate } = dateRange
+    const periodInvoices = filterByDateRange(invoicesData, startDate, endDate, 'issueDate')
+    const paidInvoices = periodInvoices.filter(inv => inv.status === 'paid')
+    
+    // Import clients data
+    const { default: clientsData } = await import('@/services/mockData/clients.json')
+    
+    const revenueByClient = {}
+    paidInvoices.forEach(invoice => {
+      const clientId = invoice.clientId
+      revenueByClient[clientId] = (revenueByClient[clientId] || 0) + invoice.amount
+    })
+    
+    return Object.entries(revenueByClient)
+      .map(([clientId, revenue]) => {
+        const client = clientsData.find(c => c.Id === parseInt(clientId))
+        return {
+          clientId: parseInt(clientId),
+          clientName: client ? client.company : 'Unknown Client',
+          revenue,
+          invoiceCount: paidInvoices.filter(inv => inv.clientId === parseInt(clientId)).length
+        }
+      })
+      .sort((a, b) => b.revenue - a.revenue)
+  },
+
+  // Revenue by Project
+  async getRevenueByProject(dateRange) {
+    await delay(700)
+    
+    const { startDate, endDate } = dateRange
+    const periodInvoices = filterByDateRange(invoicesData, startDate, endDate, 'issueDate')
+    const paidInvoices = periodInvoices.filter(inv => inv.status === 'paid')
+    
+    // Import projects data
+    const { default: projectsData } = await import('@/services/mockData/projects.json')
+    
+    const revenueByProject = {}
+    paidInvoices.forEach(invoice => {
+      if (invoice.projectId) {
+        revenueByProject[invoice.projectId] = (revenueByProject[invoice.projectId] || 0) + invoice.amount
+      }
+    })
+    
+    return Object.entries(revenueByProject)
+      .map(([projectId, revenue]) => {
+        const project = projectsData.find(p => p.Id === parseInt(projectId))
+        return {
+          projectId: parseInt(projectId),
+          projectName: project ? project.name : 'Unknown Project',
+          revenue,
+          invoiceCount: paidInvoices.filter(inv => inv.projectId === parseInt(projectId)).length
+        }
+      })
+      .sort((a, b) => b.revenue - a.revenue)
+  },
+
+  // Revenue Forecast
+  async getRevenueForecast(months = 6) {
+    await delay(900)
+    
+    const now = new Date()
+    const pastMonths = 12
+    const pastStartDate = subMonths(startOfMonth(now), pastMonths)
+    
+    const historicalInvoices = filterByDateRange(invoicesData, pastStartDate, now, 'issueDate')
+    const paidInvoices = historicalInvoices.filter(inv => inv.status === 'paid')
+    
+    // Calculate monthly average
+    const monthlyRevenues = this.groupRevenueByPeriod(paidInvoices, 'monthly', pastStartDate, now)
+    const averageMonthlyRevenue = monthlyRevenues.reduce((sum, month) => sum + month.value, 0) / monthlyRevenues.length
+    
+    // Simple growth trend calculation
+    const recentMonths = monthlyRevenues.slice(-6)
+    const olderMonths = monthlyRevenues.slice(-12, -6)
+    const recentAvg = recentMonths.reduce((sum, month) => sum + month.value, 0) / recentMonths.length
+    const olderAvg = olderMonths.reduce((sum, month) => sum + month.value, 0) / olderMonths.length
+    const growthRate = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) : 0
+    
+    // Generate forecast
+    const forecast = []
+    for (let i = 1; i <= months; i++) {
+      const forecastMonth = format(new Date(now.getFullYear(), now.getMonth() + i, 1), 'MMM yyyy')
+      const forecastValue = averageMonthlyRevenue * (1 + (growthRate * i * 0.1))
+      forecast.push({
+        period: forecastMonth,
+        value: Math.max(0, forecastValue)
+      })
+    }
+    
+    return {
+      forecast,
+      averageMonthlyRevenue,
+      growthRate: growthRate * 100,
+      confidenceLevel: Math.max(50, 90 - (Math.abs(growthRate) * 100))
+    }
+  },
+
+  // Helper method to group revenue by period
+  groupRevenueByPeriod(invoices, period, startDate, endDate) {
+    const periods = []
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    // Generate period labels and calculate revenue for each
+    if (period === 'daily') {
+      let current = start
+      while (current <= end) {
+        const dayInvoices = invoices.filter(inv => {
+          const invDate = parseISO(inv.issueDate)
+          return invDate.toDateString() === current.toDateString()
+        })
+        periods.push({
+          period: format(current, 'MMM dd'),
+          value: dayInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+        })
+        current = new Date(current.getTime() + 24 * 60 * 60 * 1000)
+      }
+    } else if (period === 'weekly') {
+      // Weekly grouping logic
+      let current = start
+      let weekNum = 1
+      while (current <= end) {
+        const weekEnd = new Date(Math.min(current.getTime() + 6 * 24 * 60 * 60 * 1000, end.getTime()))
+        const weekInvoices = invoices.filter(inv => {
+          const invDate = parseISO(inv.issueDate)
+          return invDate >= current && invDate <= weekEnd
+        })
+        periods.push({
+          period: `Week ${weekNum}`,
+          value: weekInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+        })
+        current = new Date(weekEnd.getTime() + 24 * 60 * 60 * 1000)
+        weekNum++
+      }
+    } else if (period === 'monthly') {
+      let current = startOfMonth(start)
+      while (current <= end) {
+        const monthEnd = endOfMonth(current)
+        const monthInvoices = invoices.filter(inv => {
+          const invDate = parseISO(inv.issueDate)
+          return invDate >= current && invDate <= monthEnd
+        })
+        periods.push({
+          period: format(current, 'MMM yyyy'),
+          value: monthInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+        })
+        current = new Date(current.getFullYear(), current.getMonth() + 1, 1)
+      }
+    } else if (period === 'yearly') {
+      const startYear = start.getFullYear()
+      const endYear = end.getFullYear()
+      for (let year = startYear; year <= endYear; year++) {
+        const yearInvoices = invoices.filter(inv => {
+          const invDate = parseISO(inv.issueDate)
+          return invDate.getFullYear() === year
+        })
+        periods.push({
+          period: year.toString(),
+          value: yearInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+        })
+      }
+    }
+    
+    return periods
   },
 
   // Expense breakdown by category
