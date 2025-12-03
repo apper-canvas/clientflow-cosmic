@@ -29,25 +29,44 @@ const [showPaymentForm, setShowPaymentForm] = useState(false);
     loadInvoiceData();
   }, [id]);
 
-  const loadInvoiceData = async () => {
+const loadInvoiceData = async () => {
     try {
       setLoading(true);
       setError(null);
       
+      // Validate invoice ID
+      if (!id || isNaN(parseInt(id))) {
+        setError('Invalid invoice ID');
+        return;
+      }
+      
       const invoiceResponse = await invoiceService.getById(id);
       setInvoice(invoiceResponse);
       
-      // Load related data
-      const clientResponse = await clientService.getById(invoiceResponse.clientId);
-      setClient(clientResponse);
+      // Load related data only if invoice exists
+      if (invoiceResponse?.clientId) {
+        try {
+          const clientResponse = await clientService.getById(invoiceResponse.clientId);
+          setClient(clientResponse);
+        } catch (clientError) {
+          console.error('Error loading client:', clientError);
+          // Continue without client data - non-critical
+        }
+      }
       
-      if (invoiceResponse.projectId) {
-        const projectResponse = await projectService.getById(invoiceResponse.projectId);
-        setProject(projectResponse);
+      if (invoiceResponse?.projectId) {
+        try {
+          const projectResponse = await projectService.getById(invoiceResponse.projectId);
+          setProject(projectResponse);
+        } catch (projectError) {
+          console.error('Error loading project:', projectError);
+          // Continue without project data - non-critical
+        }
       }
     } catch (error) {
       console.error('Error loading invoice:', error);
-      setError(error.message);
+      setError(error.message || 'Failed to load invoice');
+      setInvoice(null);
     } finally {
       setLoading(false);
     }
@@ -70,22 +89,40 @@ const [showPaymentForm, setShowPaymentForm] = useState(false);
     return colors[status] || colors[INVOICE_STATUSES.DRAFT];
   };
 
-  const handleEdit = () => {
+const handleEdit = () => {
+    if (!invoice?.Id) {
+      toast.error('Cannot edit invoice - invalid data');
+      return;
+    }
     navigate(`/invoices/edit/${invoice.Id}`);
   };
 
-  const handleDuplicate = async () => {
+const handleDuplicate = async () => {
+    if (!invoice?.Id) {
+      toast.error('Cannot duplicate invoice - invalid data');
+      return;
+    }
+    
     try {
       const duplicated = await invoiceService.duplicate(invoice.Id);
-      navigate(`/invoices/edit/${duplicated.Id}`);
-      toast.success('Invoice duplicated successfully');
+      if (duplicated?.Id) {
+        navigate(`/invoices/edit/${duplicated.Id}`);
+        toast.success('Invoice duplicated successfully');
+      } else {
+        toast.error('Failed to duplicate invoice - invalid response');
+      }
     } catch (error) {
       console.error('Error duplicating invoice:', error);
       toast.error(error.message || 'Failed to duplicate invoice');
     }
   };
 
-  const handleSend = async () => {
+const handleSend = async () => {
+    if (!invoice?.Id) {
+      toast.error('Cannot send invoice - invalid data');
+      return;
+    }
+    
     if (!client?.email) {
       toast.error('Client email is required to send invoice');
       return;
@@ -98,7 +135,7 @@ const [showPaymentForm, setShowPaymentForm] = useState(false);
         message: 'Please find attached your invoice.'
       });
       
-      setInvoice(prev => ({ ...prev, status: INVOICE_STATUSES.SENT }));
+      setInvoice(prev => prev ? { ...prev, status: INVOICE_STATUSES.SENT } : null);
       toast.success('Invoice sent successfully');
     } catch (error) {
       console.error('Error sending invoice:', error);
@@ -149,12 +186,17 @@ const handleSendReminder = async () => {
     }
   };
 
-  const handleMarkAsSent = async () => {
+const handleMarkAsSent = async () => {
+    if (!invoice?.Id) {
+      toast.error('Cannot update invoice - invalid data');
+      return;
+    }
+    
     try {
       const updatedInvoice = await invoiceService.update(invoice.Id, { 
         status: INVOICE_STATUSES.SENT 
       });
-      setInvoice(updatedInvoice);
+      setInvoice(updatedInvoice || null);
       toast.success('Invoice marked as sent');
     } catch (error) {
       console.error('Error updating invoice:', error);
@@ -162,7 +204,12 @@ const handleSendReminder = async () => {
     }
   };
 
-  const handleCancel = async () => {
+const handleCancel = async () => {
+    if (!invoice?.Id) {
+      toast.error('Cannot cancel invoice - invalid data');
+      return;
+    }
+    
     if (!confirm('Are you sure you want to cancel this invoice? This action cannot be undone.')) {
       return;
     }
@@ -171,7 +218,7 @@ const handleSendReminder = async () => {
       const updatedInvoice = await invoiceService.update(invoice.Id, { 
         status: INVOICE_STATUSES.CANCELLED 
       });
-      setInvoice(updatedInvoice);
+      setInvoice(updatedInvoice || null);
       toast.success('Invoice cancelled');
     } catch (error) {
       console.error('Error cancelling invoice:', error);
