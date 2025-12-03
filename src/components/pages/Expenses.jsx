@@ -104,9 +104,19 @@ const Expenses = () => {
             Track and manage all your business expenses
           </p>
         </div>
-        <Button onClick={handleAddExpense} icon="Plus">
-          Add Expense
-        </Button>
+<div className="flex gap-3">
+          <Button onClick={handleAddExpense} icon="Plus">
+            Add Expense
+          </Button>
+          <Button 
+            variant="ghost" 
+            onClick={() => window.location.href = '/expense-reports'} 
+            icon="BarChart3"
+            className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+          >
+            View Reports
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
