@@ -43,10 +43,15 @@ const navigationItems = [
       href: "/expenses",
       icon: "Receipt"
     },
+{
+      name: "Invoices",
+      href: "/invoices",
+      icon: "FileText"
+    },
     {
-      name: "Documents",
+      name: "Documents", 
       href: "/coming-soon",
-      icon: "FileText",
+      icon: "Folder",
       comingSoon: true
     },
     {
