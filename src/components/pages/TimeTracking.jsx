@@ -1050,7 +1050,6 @@ const ApprovalQueueModal = ({
       </div>
     </div>
   );
-);
 };
 // Time Entry Form Component
 const TimeEntryForm = ({ isOpen, onClose, onSave, entry, tasks, projects }) => {
