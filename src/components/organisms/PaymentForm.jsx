@@ -100,9 +100,9 @@ const PaymentForm = ({ invoice, isOpen, onClose, onSave }) => {
 
   if (!isOpen || !invoice) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg max-w-md w-full">
+return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-lg max-w-sm sm:max-w-md w-full p-4 sm:p-6 mx-4">
         <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Record Payment
