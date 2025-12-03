@@ -84,7 +84,13 @@ const Reports = () => {
   }
 
   // Chart configurations
-const getRevenueChartOptions = (data) => ({
+const getRevenueChartOptions = (data) => {
+  // Handle both array data and object with months property
+  const categories = Array.isArray(data) 
+    ? data.map(item => item.period || item.month || 'Unknown') 
+    : (data?.months || []);
+
+  return {
     chart: {
       type: 'area',
       toolbar: { show: false },
@@ -109,7 +115,7 @@ const getRevenueChartOptions = (data) => ({
       strokeDashArray: 4
     },
     xaxis: {
-      categories: data?.map(item => item.period) || [],
+      categories: categories,
       labels: {
         style: {
           colors: '#64748b',
@@ -134,9 +140,10 @@ const getRevenueChartOptions = (data) => ({
     dataLabels: {
       enabled: false
     }
-  })
+  }
+}
 
-  const getClientRevenueOptions = (data) => ({
+const getClientRevenueOptions = (data) => ({
     chart: {
       type: 'bar',
       horizontal: true,
@@ -161,7 +168,7 @@ const getRevenueChartOptions = (data) => ({
       }
     },
     xaxis: {
-      categories: data?.map(item => item.clientName) || [],
+      categories: Array.isArray(data) ? data.map(item => item.clientName || item.name || 'Unknown') : [],
       labels: {
         formatter: (value) => formatCurrency(value),
         style: {
@@ -180,12 +187,12 @@ const getRevenueChartOptions = (data) => ({
     }
   })
 
-  const getProjectStatusOptions = (data) => ({
+const getProjectStatusOptions = (data) => ({
     chart: {
       type: 'donut'
     },
     colors: ['#10B981', '#2C3E85', '#F59E0B', '#EF4444', '#6B7280'],
-    labels: data?.map(item => item.status) || [],
+    labels: Array.isArray(data) ? data.map(item => item.status || 'Unknown') : [],
     legend: {
       position: 'bottom',
       labels: {
@@ -229,7 +236,7 @@ const getTopClientsOptions = (data) => ({
       }
     },
     xaxis: {
-      categories: data?.map(item => item.company) || [],
+      categories: Array.isArray(data) ? data.map(item => item.company || item.name || 'Unknown') : [],
       labels: {
         formatter: (value) => formatCurrency(value),
         style: {
@@ -440,10 +447,14 @@ const getTopClientsOptions = (data) => ({
               ]}
             >
               <Chart
-                options={getRevenueChartOptions(dashboardData.revenueChart)}
+options={getRevenueChartOptions(dashboardData.revenueChart)}
                 series={[{
                   name: 'Revenue',
-                  data: dashboardData.revenueChart?.revenue || []
+                  data: Array.isArray(dashboardData.revenueChart?.revenue) 
+                    ? dashboardData.revenueChart.revenue 
+                    : (Array.isArray(dashboardData.revenueChart) 
+                      ? dashboardData.revenueChart.map(item => item.value || item.amount || 0)
+                      : [])
                 }]}
                 type="line"
                 height={300}
