@@ -7,6 +7,15 @@ let nextId = Math.max(...tasks.map(t => t.Id)) + 1;
 let nextCommentId = Math.max(...tasks.flatMap(t => t.comments?.map(c => c.id) || [])) + 1;
 let nextAttachmentId = Math.max(...tasks.flatMap(t => t.attachments?.map(a => a.id) || [])) + 1;
 
+// Task status constants for Kanban board
+export const TASK_STATUSES = {
+  TODO: 'To Do',
+  IN_PROGRESS: 'In Progress', 
+  REVIEW: 'Review',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled'
+};
+
 // Simulate network delay
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
