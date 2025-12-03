@@ -611,10 +611,11 @@ const reportsService = {
       growthRate: growthRate * 100,
       confidenceLevel: Math.max(50, 90 - (Math.abs(growthRate) * 100))
     }
+}
   },
-},
 
   // Helper method for grouping revenue by period
+  groupRevenueByPeriod(invoices, period, startDate, endDate) {
     const periods = []
     const start = new Date(startDate)
     const end = new Date(endDate)
