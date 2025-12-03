@@ -13,6 +13,7 @@ const TodayTasks = lazy(() => import("@/components/pages/TodayTasks"));
 const WeekTasks = lazy(() => import("@/components/pages/WeekTasks"));
 const OverdueTasks = lazy(() => import("@/components/pages/OverdueTasks"));
 const CompletedTasks = lazy(() => import("@/components/pages/CompletedTasks"));
+const Reports = lazy(() => import("@/components/pages/Reports"));
 const TimeTracking = lazy(() => import("@/components/pages/TimeTracking"));
 const Expenses = lazy(() => import("@/components/pages/Expenses"));
 const ExpenseReports = lazy(() => import("@/components/pages/ExpenseReports"));
@@ -22,7 +23,6 @@ const InvoiceDetail = lazy(() => import("@/components/pages/InvoiceDetail"));
 const Schools = lazy(() => import("@/components/pages/Schools"));
 const ComingSoon = lazy(() => import("@/components/pages/ComingSoon"));
 const NotFound = lazy(() => import("@/components/pages/NotFound"));
-
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -109,9 +109,9 @@ const mainRoutes = [
     path: "coming-soon",
     element: <Suspense fallback={<LoadingFallback />}><ComingSoon /></Suspense>
   },
-  {
+{
     path: "reports",
-    element: <Suspense fallback={<LoadingFallback />}><ComingSoon /></Suspense>
+    element: <Suspense fallback={<LoadingFallback />}><Reports /></Suspense>
   },
   {
     path: "*",
