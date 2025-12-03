@@ -34,7 +34,7 @@ const LoadingFallback = () => (
       </svg>
     </div>
   </div>
-
+);
 
 const mainRoutes = [
   {
