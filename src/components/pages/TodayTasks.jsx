@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ApperIcon } from '@/components/ApperIcon';
+import ApperIcon from '@/components/ApperIcon';
 import { TaskCard } from '@/components/organisms/TaskCard';
 import Loading from '@/components/ui/Loading';
 import { Empty } from '@/components/ui/Empty';
