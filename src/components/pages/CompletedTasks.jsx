@@ -3,7 +3,7 @@ import { ApperIcon } from '@/components/ApperIcon';
 import { TaskCard } from '@/components/organisms/TaskCard';
 import Loading from '@/components/ui/Loading';
 import { Empty } from '@/components/ui/Empty';
-import { ErrorView } from '@/components/ui/ErrorView';
+import ErrorView from '@/components/ui/ErrorView';
 import { taskService } from '@/services/api/taskService';
 import { format, subDays, isAfter } from 'date-fns';
 
