@@ -319,9 +319,8 @@ const handleStatusChange = async (taskId, newStatus) => {
           ))}
         </div>
       )}
-    </div>
+</div>
   );
-}
 
   const handleCreateTask = (status = null) => {
     setSelectedTask(null)
@@ -361,7 +360,7 @@ const handleStatusChange = async (taskId, newStatus) => {
     setTasks(prev => prev.map(task => 
       task.Id === updatedTask.Id ? updatedTask : task
     ))
-}
+  }
 
   const handleStartTimer = async (taskId) => {
     try {
@@ -434,7 +433,7 @@ const handleStatusChange = async (taskId, newStatus) => {
       return 'text-amber-600'
     }
     return 'text-slate-600'
-}
+  }
 
   return (
     <div className="space-y-6">

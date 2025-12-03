@@ -697,5 +697,8 @@ function Schools() {
           defaultStatus={defaultStatus}
         />
       )}
-    </div>
-  )
+</div>
+  );
+}
+
+export default Schools;
