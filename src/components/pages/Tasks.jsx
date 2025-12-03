@@ -226,14 +226,9 @@ const handleStatusChange = async (taskId, newStatus) => {
     loadData()
   }, [])
 
+  // Early returns after all hooks
   if (loading) return <Loading />
   if (error) return <ErrorView error={error} onRetry={loadData} />
-if (error) return <ErrorView error={error} onRetry={loadData} />
-
-  // Load data on component mount
-  useEffect(() => {
-    loadData()
-  }, [])
   // Helper functions
   const handleCreateTask = (status = null) => {
     setEditingTask(null)
