@@ -368,9 +368,9 @@ return Object.values(grouped).sort((a, b) => b.amount - a.amount)
     return Object.values(statusMap).filter(item => item.count > 0)
   },
 
-  getTaxReport(filters = {}) {
-    const expenses = this.getAllExpenses()
-    let filteredExpenses = expenses
+getTaxReport(filters = {}) {
+    const allExpenses = [...expenses]
+    let filteredExpenses = allExpenses
 
     // Apply date range filter if provided
     if (filters.startDate) {
