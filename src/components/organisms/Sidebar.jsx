@@ -34,6 +34,11 @@ const navigationItems = [
       icon: "Users"
     },
     {
+      name: "Time Tracking",
+      href: "/time-tracking",
+      icon: "Clock"
+    },
+    {
       name: "Expenses",
       href: "/expenses",
       icon: "Receipt"
@@ -67,7 +72,7 @@ const navigationItems = [
           </div>
         </div>
         <nav className="mt-5 flex-1 px-2 space-y-1">
-          {navigationItems.map((item) => {
+{navigationItems.map((item) => {
             const isActive = item.href === "/" ? location.pathname === "/" : location.pathname.startsWith(item.href)
             
             return (
@@ -146,7 +151,7 @@ const navigationItems = [
               </button>
             </div>
             
-            <nav className="mt-5 px-2 space-y-1">
+<nav className="mt-5 px-2 space-y-1">
               {navigationItems.map((item) => {
                 const isActive = item.href === "/" ? location.pathname === "/" : location.pathname.startsWith(item.href)
                 

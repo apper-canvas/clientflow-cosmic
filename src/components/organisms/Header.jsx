@@ -1,10 +1,10 @@
-import { useState } from "react"
-import ApperIcon from "@/components/ApperIcon"
-import ThemeToggle from "@/components/molecules/ThemeToggle"
-import Button from "@/components/atoms/Button"
+import React, { useState } from "react";
+import ApperIcon from "@/components/ApperIcon";
+import Button from "@/components/atoms/Button";
+import ThemeToggle from "@/components/molecules/ThemeToggle";
 
 const Header = ({ onMenuToggle }) => {
-  const [showQuickActions, setShowQuickActions] = useState(false)
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   const quickActions = [
     { name: "Add Expense", icon: "Plus", action: () => console.log("Add expense") },
@@ -13,7 +13,7 @@ const Header = ({ onMenuToggle }) => {
   ]
 
   return (
-    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-3">
+<header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           {/* Mobile menu button */}
@@ -25,7 +25,7 @@ const Header = ({ onMenuToggle }) => {
           </button>
           
           <div className="hidden sm:block">
-<h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               Project Management
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -34,7 +34,7 @@ const Header = ({ onMenuToggle }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+<div className="flex items-center gap-3">
           {/* Quick Actions */}
           <div className="relative">
             <Button
@@ -72,7 +72,7 @@ const Header = ({ onMenuToggle }) => {
           {/* Theme Toggle */}
           <ThemeToggle />
 
-          {/* User Profile */}
+{/* User Profile */}
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 bg-gradient-to-br from-primary-600 to-accent-600 rounded-full flex items-center justify-center">
               <ApperIcon name="User" className="h-4 w-4 text-white" />

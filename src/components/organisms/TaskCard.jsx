@@ -27,10 +27,9 @@ const formatFileSize = (size) => {
   return parseFloat((size / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export function TaskCard({ task, onEdit, onDelete, onStatusChange, className = '' }) {
+export function TaskCard({ task, onEdit, onDelete, onStatusChange, onStartTimer, onStopTimer, className = '' }) {
   const timeProgress = getTimeProgress(task.estimatedHours, task.actualHours);
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
-  
   const handleStatusChange = (newStatus) => {
     onStatusChange(task.Id, newStatus);
   };
@@ -51,18 +50,29 @@ export function TaskCard({ task, onEdit, onDelete, onStatusChange, className = '
     }
   };
 
-  return (
+return (
     <div className={`
       bg-white dark:bg-slate-800 rounded-lg p-4 shadow-sm border transition-all duration-200 hover:shadow-md
       ${isOverdue ? 'border-red-200 dark:border-red-800' : 'border-slate-200 dark:border-slate-700'}
+      ${task.activeTimer ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/10' : ''}
       ${className}
     `}>
-      {/* Header */}
+{/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
-          <h3 className="font-medium text-slate-900 dark:text-white line-clamp-2">
-            {task.title}
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-medium text-slate-900 dark:text-white line-clamp-2">
+              {task.title}
+            </h3>
+            {task.activeTimer && (
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Timer running"></div>
+            )}
+            {task.billable && (
+              <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">
+                Billable
+              </span>
+            )}
+          </div>
           {task.description && (
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
               {task.description}
@@ -70,7 +80,26 @@ export function TaskCard({ task, onEdit, onDelete, onStatusChange, className = '
           )}
         </div>
         
-        <div className="flex items-center gap-2 ml-3">
+        <div className="flex items-center gap-1 ml-3">
+          {/* Timer Controls */}
+          {task.activeTimer ? (
+            <button
+              onClick={() => onStopTimer?.(task.Id)}
+              className="p-1.5 text-green-600 hover:text-green-700 bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/40 rounded-lg transition-colors duration-200"
+              title="Stop timer"
+            >
+              <ApperIcon name="Square" size={14} />
+            </button>
+          ) : (
+            <button
+              onClick={() => onStartTimer?.(task.Id)}
+              className="p-1.5 text-slate-400 hover:text-green-600 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors duration-200"
+              title="Start timer"
+            >
+              <ApperIcon name="Play" size={14} />
+            </button>
+          )}
+          
           <button
             onClick={() => onEdit(task)}
             className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-200"
@@ -108,11 +137,11 @@ export function TaskCard({ task, onEdit, onDelete, onStatusChange, className = '
         </div>
       )}
 
-      {/* Time Tracking Progress */}
+{/* Time Tracking Progress */}
       {task.estimatedHours > 0 && (
         <div className="mb-3">
           <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1">
-            <span>Progress: {task.actualHours}h / {task.estimatedHours}h</span>
+            <span>Progress: {task.actualHours || 0}h / {task.estimatedHours}h</span>
             <span className={`font-medium ${
               timeProgress.status === 'over' ? 'text-red-600' : 
               timeProgress.status === 'complete' ? 'text-green-600' : 
@@ -130,6 +159,20 @@ export function TaskCard({ task, onEdit, onDelete, onStatusChange, className = '
               }`}
               style={{ width: `${Math.min(timeProgress.percentage, 100)}%` }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Time Entries Summary */}
+      {task.timeEntries && task.timeEntries.length > 0 && (
+        <div className="mb-3 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+          <div className="text-xs text-slate-600 dark:text-slate-400">
+            {task.timeEntries.length} time {task.timeEntries.length === 1 ? 'entry' : 'entries'}
+            {task.timeEntries.some(e => e.billable) && (
+              <span className="ml-2 text-green-600 dark:text-green-400">
+                ${task.timeEntries.filter(e => e.billable).reduce((sum, e) => sum + (e.totalAmount || 0), 0).toFixed(2)} billable
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -222,6 +265,19 @@ export function TaskCard({ task, onEdit, onDelete, onStatusChange, className = '
           </div>
         )}
       </div>
+
+{/* Active Timer Display */}
+      {task.activeTimer && (
+        <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700">
+          <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="font-medium">Timer active</span>
+            <span className="text-slate-500 dark:text-slate-400 text-xs">
+              Started {format(new Date(task.activeTimer.startTime), 'HH:mm')}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Completion Date */}
       {task.status === 'completed' && task.completedAt && (

@@ -1,5 +1,5 @@
 [
-  {
+{
     "Id": 1,
     "title": "Design Homepage Mockups",
     "description": "Create wireframes and high-fidelity mockups for the new homepage design",
@@ -13,6 +13,30 @@
     "clientId": 1,
     "estimatedHours": 8,
     "actualHours": 5.5,
+    "billable": true,
+    "hourlyRate": 85,
+    "timeEntries": [
+      {
+        "id": 1,
+        "date": "2024-01-15",
+        "startTime": "09:00",
+        "endTime": "11:30",
+        "duration": 2.5,
+        "description": "Wireframe creation and user flow design",
+        "billable": true,
+        "totalAmount": 212.50
+      },
+      {
+        "id": 2,
+        "date": "2024-01-14",
+        "startTime": "14:00",
+        "endTime": "17:00",
+        "duration": 3,
+        "description": "High-fidelity mockup development",
+        "billable": true,
+        "totalAmount": 255.00
+      }
+    ],
     "tags": [
       { "id": 1, "name": "Design", "color": "#3B82F6" },
       { "id": 2, "name": "Frontend", "color": "#10B981" },
@@ -61,7 +85,7 @@
     ]
   },
   {
-    "Id": 2,
+"Id": 2,
     "title": "Implement User Authentication",
     "description": "Set up login, registration, and password reset functionality",
     "status": "todo",
@@ -74,6 +98,16 @@
     "clientId": 1,
     "estimatedHours": 12,
     "actualHours": 0,
+    "billable": true,
+    "hourlyRate": 95,
+    "timeEntries": [],
+    "activeTimer": {
+      "Id": 1,
+      "startTime": "2024-01-15T10:00:00Z",
+      "description": "Working on OAuth integration",
+      "isPaused": false,
+      "pausedDuration": 0
+    },
     "tags": [
       { "id": 4, "name": "Backend", "color": "#8B5CF6" },
       { "id": 5, "name": "Security", "color": "#F59E0B" },
@@ -106,7 +140,7 @@
       }
     ]
   },
-  {
+{
     "Id": 3,
     "title": "Database Schema Design",
     "description": "Design and implement the database schema for user data and application entities",
@@ -121,6 +155,30 @@
     "clientId": 1,
     "estimatedHours": 6,
     "actualHours": 7.5,
+    "billable": false,
+    "hourlyRate": 0,
+    "timeEntries": [
+      {
+        "id": 3,
+        "date": "2024-01-08",
+        "startTime": "09:00",
+        "endTime": "13:00",
+        "duration": 4,
+        "description": "Database design and ERD creation",
+        "billable": false,
+        "totalAmount": 0
+      },
+      {
+        "id": 4,
+        "date": "2024-01-09",
+        "startTime": "10:00",
+        "endTime": "13:30",
+        "duration": 3.5,
+        "description": "Schema implementation and testing",
+        "billable": false,
+        "totalAmount": 0
+      }
+    ],
     "tags": [
       { "id": 4, "name": "Backend", "color": "#8B5CF6" },
       { "id": 6, "name": "Database", "color": "#EC4899" }

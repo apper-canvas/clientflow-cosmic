@@ -35,7 +35,7 @@ const PREDEFINED_TAGS = [
 ];
 
 export function TaskForm({ task, onSubmit, onCancel }) {
-  const [formData, setFormData] = useState({
+const [formData, setFormData] = useState({
     title: '',
     description: '',
     status: 'todo',
@@ -45,6 +45,8 @@ export function TaskForm({ task, onSubmit, onCancel }) {
     projectId: '',
     clientId: '',
     estimatedHours: 0,
+    billable: false,
+    hourlyRate: 0,
     tags: []
   });
   
@@ -59,7 +61,7 @@ export function TaskForm({ task, onSubmit, onCancel }) {
   }, []);
 
   useEffect(() => {
-    if (task) {
+if (task) {
       setFormData({
         title: task.title || '',
         description: task.description || '',
@@ -70,6 +72,8 @@ export function TaskForm({ task, onSubmit, onCancel }) {
         projectId: task.projectId || '',
         clientId: task.clientId || '',
         estimatedHours: task.estimatedHours || 0,
+        billable: task.billable || false,
+        hourlyRate: task.hourlyRate || 0,
         tags: task.tags || []
       });
     }
@@ -103,10 +107,11 @@ export function TaskForm({ task, onSubmit, onCancel }) {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
+try {
       const taskData = {
         ...formData,
-        estimatedHours: parseFloat(formData.estimatedHours) || 0
+        estimatedHours: parseFloat(formData.estimatedHours) || 0,
+        hourlyRate: parseFloat(formData.hourlyRate) || 0
       };
 
       let savedTask;
@@ -295,8 +300,7 @@ export function TaskForm({ task, onSubmit, onCancel }) {
             />
           </div>
         </div>
-
-        {/* Assigned To */}
+{/* Assigned To */}
         <div>
           <Label htmlFor="assignedTo" className="text-sm font-medium text-slate-700 dark:text-slate-300">
             Assigned To
@@ -347,6 +351,58 @@ export function TaskForm({ task, onSubmit, onCancel }) {
                 </option>
               ))}
             </Select>
+          </div>
+        </div>
+
+        {/* Time Tracking Settings */}
+        <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Time Tracking</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="estimatedHours" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Estimated Hours
+              </Label>
+              <Input
+                id="estimatedHours"
+                type="number"
+                step="0.25"
+                min="0"
+                value={formData.estimatedHours}
+                onChange={(e) => handleInputChange('estimatedHours', e.target.value)}
+                placeholder="0"
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="hourlyRate" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Hourly Rate ($)
+              </Label>
+              <Input
+                id="hourlyRate"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.hourlyRate}
+                onChange={(e) => handleInputChange('hourlyRate', e.target.value)}
+                placeholder="0.00"
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="billable"
+              checked={formData.billable}
+              onChange={(e) => handleInputChange('billable', e.target.checked)}
+              className="rounded border-slate-300 dark:border-slate-600"
+            />
+            <Label htmlFor="billable" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Billable task
+</Label>
           </div>
         </div>
 

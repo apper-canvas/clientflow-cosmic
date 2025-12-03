@@ -13,10 +13,11 @@ const Projects = lazy(() => import("@/components/pages/Projects"));
 const ProjectDetail = lazy(() => import("@/components/pages/ProjectDetail"));
 const Clients = lazy(() => import("@/components/pages/Clients"));
 const ClientDetail = lazy(() => import("@/components/pages/ClientDetail"));
-const ComingSoon = lazy(() => import("@/components/pages/ComingSoon"));
-const NotFound = lazy(() => import("@/components/pages/NotFound"));
+const TimeTracking = lazy(() => import("@/components/pages/TimeTracking"));
 const Expenses = lazy(() => import("@/components/pages/Expenses"));
-
+const ComingSoon = lazy(() => import("@/components/pages/ComingSoon"));
+const Schools = lazy(() => import("@/components/pages/Schools"));
+const NotFound = lazy(() => import("@/components/pages/NotFound"));
 // Suspense fallback component
 const suspenseFallback = (
   <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -115,7 +116,7 @@ const mainRoutes = [
     path: "time-tracking",
     element: (
       <Suspense fallback={suspenseFallback}>
-        <ComingSoon feature="Time Tracking" />
+        <TimeTracking />
       </Suspense>
     ),
   },
@@ -136,6 +137,14 @@ const mainRoutes = [
     ),
   },
   {
+    path: "schools",
+    element: (
+      <Suspense fallback={suspenseFallback}>
+        <Schools />
+      </Suspense>
+    ),
+  },
+  {
     path: "reports",
     element: (
       <Suspense fallback={suspenseFallback}>
@@ -152,6 +161,7 @@ const mainRoutes = [
     ),
   },
 ];
+
 const routes = [
   {
     path: "/",
@@ -163,5 +173,6 @@ const routes = [
     children: [...mainRoutes],
   },
 ];
+
 
 export const router = createBrowserRouter(routes);

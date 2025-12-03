@@ -16,14 +16,17 @@ import TaskCard from "@/components/organisms/TaskCard";
 import Projects from "@/components/pages/Projects";
 import SearchBar from "@/components/molecules/SearchBar";
 import StatusBadge from "@/components/molecules/StatusBadge";
+import TimerWidget from "@/components/organisms/TimerWidget";
+import { cn } from "@/utils/cn";
 
 const Tasks = () => {
-  const [tasks, setTasks] = useState([])
+const [tasks, setTasks] = useState([])
   const [projects, setProjects] = useState([])
   const [filteredTasks, setFilteredTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [stats, setStats] = useState(null)
+  const [activeTimer, setActiveTimer] = useState(null)
   
   // View state
   const [view, setView] = useState('list') // 'list' or 'kanban'
@@ -33,7 +36,7 @@ const Tasks = () => {
   const [selectedTask, setSelectedTask] = useState(null)
   const [defaultStatus, setDefaultStatus] = useState(null)
   
-// Filter state
+  // Filter state
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -44,7 +47,6 @@ const Tasks = () => {
     dueDateFrom: '',
     dueDateTo: ''
   })
-
 // Missing state variables
   const [editingTask, setEditingTask] = useState(null)
   // Load data function
@@ -93,7 +95,7 @@ const Tasks = () => {
   const loadTasks = loadData
 
   // Filter tasks based on current filters
-  useEffect(() => {
+useEffect(() => {
     let filtered = tasks
 
     // Apply search filter
@@ -149,6 +151,10 @@ const Tasks = () => {
     }
 
     setFilteredTasks(filtered)
+
+    // Check for active timer
+    const timerTask = filtered.find(task => task.activeTimer)
+    setActiveTimer(timerTask?.activeTimer || null)
   }, [tasks, filters])
 
   // Handle filter changes
@@ -174,7 +180,7 @@ const Tasks = () => {
   }
 
   // Form handlers
-  const handleFormSubmit = async (taskData) => {
+const handleFormSubmit = async (taskData) => {
     try {
       if (editingTask) {
         await taskService.update(editingTask.Id, taskData)
@@ -192,7 +198,7 @@ const Tasks = () => {
     }
   }
 
-  const handleEdit = (task) => {
+const handleEdit = (task) => {
     setEditingTask(task)
     setShowForm(true)
   }
@@ -264,8 +270,7 @@ const handleStatusChange = async (taskId, newStatus) => {
     }
     return 'text-slate-600'
   }
-
-  const handleStartTimer = async (taskId) => {
+const handleStartTimer = async (taskId) => {
     try {
       await taskService.startTimer(taskId)
       toast.success('Timer started')
@@ -287,6 +292,28 @@ const handleStatusChange = async (taskId, newStatus) => {
     }
   }
 
+  const handlePauseTimer = async (taskId) => {
+    try {
+      await taskService.pauseTimer(taskId)
+      toast.success('Timer paused')
+      loadData()
+    } catch (err) {
+      toast.error('Failed to pause timer')
+      console.error('Error pausing timer:', err)
+    }
+  }
+
+  const handleResumeTimer = async (taskId) => {
+    try {
+      await taskService.resumeTimer(taskId)
+      toast.success('Timer resumed')
+      loadData()
+    } catch (err) {
+      toast.error('Failed to resume timer')
+      console.error('Error resuming timer:', err)
+    }
+  }
+
   const handleAddManualTime = async (taskId) => {
     const hours = prompt('Enter hours worked:')
     if (!hours || isNaN(parseFloat(hours))) {
@@ -297,9 +324,10 @@ const handleStatusChange = async (taskId, newStatus) => {
     
     try {
       await taskService.addTimeEntry(taskId, {
-        hours: parseFloat(hours),
+        duration: parseFloat(hours),
         description,
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        billable: false
       })
       toast.success('Time entry added')
       loadData()
@@ -314,8 +342,10 @@ const handleStatusChange = async (taskId, newStatus) => {
       task.Id === updatedTask.Id ? updatedTask : task
     ))
   }
-return (
+
+  return (
     <div className="space-y-6">
+<div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -504,8 +534,7 @@ return (
           />
         </div>
       </div>
-
-      {/* Content */}
+{/* Content */}
       {view === 'kanban' ? (
         <TaskKanban
           tasks={filteredTasks}
@@ -514,6 +543,8 @@ return (
           onTaskEdit={handleEdit}
           onTaskDelete={handleDelete}
           onCreateTask={handleCreateTask}
+          onStartTimer={handleStartTimer}
+          onStopTimer={handleStopTimer}
           projects={projects}
         />
       ) : (
@@ -544,7 +575,10 @@ return (
                   {filteredTasks.map((task) => (
                     <tr 
                       key={task.Id} 
-                      className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+                      className={cn(
+                        "border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors",
+                        task.activeTimer && "bg-green-50 dark:bg-green-900/10"
+                      )}
                     >
                       <td className="p-4">
                         <div>
@@ -655,7 +689,7 @@ return (
                         )}
                       </td>
                       <td className="p-4">
-                        <div className="space-y-2">
+<div className="space-y-2">
                           {/* Time Tracking */}
                           <div className="space-y-1">
                             <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
@@ -675,6 +709,11 @@ return (
                             {task.timeEntries && task.timeEntries.length > 0 && (
                               <div className="text-xs text-slate-500 dark:text-slate-400">
                                 {task.timeEntries.length} time entries
+                                {task.timeEntries.some(e => e.billable) && (
+                                  <span className="ml-2 text-green-600 dark:text-green-400">
+                                    ${task.timeEntries.filter(e => e.billable).reduce((sum, e) => sum + (e.totalAmount || 0), 0).toFixed(2)} billable
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -682,14 +721,35 @@ return (
                           {/* Timer Controls */}
                           <div className="flex items-center gap-1">
                             {task.activeTimer ? (
-                              <button
-                                onClick={() => handleStopTimer(task.Id)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 rounded transition-colors"
-                                title="Stop timer"
-                              >
-                                <ApperIcon name="Square" className="w-3 h-3" />
-                                Stop
-                              </button>
+                              <>
+                                {task.activeTimer.isPaused ? (
+                                  <button
+                                    onClick={() => handleResumeTimer(task.Id)}
+                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded transition-colors"
+                                    title="Resume timer"
+                                  >
+                                    <ApperIcon name="Play" className="w-3 h-3" />
+                                    Resume
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handlePauseTimer(task.Id)}
+                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-700 dark:text-yellow-300 rounded transition-colors"
+                                    title="Pause timer"
+                                  >
+                                    <ApperIcon name="Pause" className="w-3 h-3" />
+                                    Pause
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleStopTimer(task.Id)}
+                                  className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 rounded transition-colors"
+                                  title="Stop timer"
+                                >
+                                  <ApperIcon name="Square" className="w-3 h-3" />
+                                  Stop
+                                </button>
+                              </>
                             ) : (
                               <button
                                 onClick={() => handleStartTimer(task.Id)}
@@ -739,7 +799,7 @@ return (
         </div>
       )}
 
-      {/* Task Form */}
+{/* Task Form */}
       {showForm && (
         <TaskForm
           task={editingTask || selectedTask}
@@ -761,6 +821,17 @@ return (
           defaultStatus={defaultStatus}
         />
       )}
+
+      {/* Timer Widget */}
+      {activeTimer && (
+        <TimerWidget
+          activeTimer={activeTimer}
+          onStop={handleStopTimer}
+          onPause={handlePauseTimer}
+          onResume={handleResumeTimer}
+        />
+      )}
+    </div>
     </div>
   )
 }

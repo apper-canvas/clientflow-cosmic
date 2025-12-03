@@ -6,6 +6,9 @@ let tasks = [...mockTasks];
 let nextId = Math.max(...tasks.map(t => t.Id)) + 1;
 let nextCommentId = Math.max(...tasks.flatMap(t => t.comments?.map(c => c.id) || [])) + 1;
 let nextAttachmentId = Math.max(...tasks.flatMap(t => t.attachments?.map(a => a.id) || [])) + 1;
+
+// Active timers storage
+let activeTaskTimers = new Map();
 // Task priority constants for filtering and display
 export const TASK_PRIORITIES = {
   LOW: 'Low',
@@ -149,7 +152,7 @@ export const taskService = {
       .sort((a, b) => new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt));
   },
 
-  // Time tracking methods
+// Time tracking methods
   async updateTimeTracking(id, timeData) {
     await delay(200);
     const task = tasks.find(t => t.Id === parseInt(id));
@@ -162,6 +165,8 @@ export const taskService = {
       ...task,
       estimatedHours: timeData.estimatedHours ?? task.estimatedHours,
       actualHours: timeData.actualHours ?? task.actualHours,
+      billable: timeData.billable ?? task.billable,
+      hourlyRate: timeData.hourlyRate ?? task.hourlyRate,
       updatedAt: new Date().toISOString()
     };
 
@@ -707,39 +712,53 @@ async reorderSubtasks(parentId, subtaskIds) {
     return true;
   },
 
-  // Time tracking operations
-async startTimer(taskId) {
+// Enhanced time tracking operations
+  async startTimer(taskId, description = 'Working on task') {
     if (!taskId) {
       throw new Error('Task ID is required');
     }
     await delay(200);
-    const index = tasks.findIndex(task => task.Id === parseInt(taskId));
-    if (index === -1) {
+    
+    const task = tasks.find(t => t.Id === parseInt(taskId));
+    if (!task) {
       throw new Error('Task not found');
     }
 
     // Stop any other active timers
-    tasks.forEach(task => {
-      if (task.activeTimer) {
-        task.activeTimer = null;
-        task.updatedAt = new Date().toISOString();
-      }
-    });
+    activeTaskTimers.clear();
 
-    tasks[index].activeTimer = {
+    // Create timer entry
+    const timerId = Date.now();
+    const timer = {
+      Id: timerId,
+      taskId: parseInt(taskId),
+      projectId: task.projectId,
       startTime: new Date().toISOString(),
-      description: 'Working on task'
+      description,
+      isPaused: false,
+      pausedDuration: 0
     };
-    tasks[index].updatedAt = new Date().toISOString();
 
-    return tasks[index];
+    activeTaskTimers.set(timerId, timer);
+    
+    // Mark task as having active timer
+    const index = tasks.findIndex(t => t.Id === parseInt(taskId));
+    tasks[index] = {
+      ...tasks[index],
+      activeTimer: timer,
+      updatedAt: new Date().toISOString()
+    };
+
+    toast.success('Timer started');
+    return { ...tasks[index] };
   },
 
-async stopTimer(taskId, description = '') {
+  async stopTimer(taskId, description = '') {
     if (!taskId) {
       throw new Error('Task ID is required');
     }
     await delay(200);
+    
     const index = tasks.findIndex(task => task.Id === parseInt(taskId));
     if (index === -1) {
       throw new Error('Task not found');
@@ -752,16 +771,19 @@ async stopTimer(taskId, description = '') {
 
     const startTime = new Date(task.activeTimer.startTime);
     const endTime = new Date();
-    const duration = (endTime - startTime) / 1000 / 60 / 60; // Convert to hours
+    const totalMs = endTime - startTime - (task.activeTimer.pausedDuration || 0);
+    const duration = totalMs / (1000 * 60 * 60); // Convert to hours
 
+    // Create time entry
     const timeEntry = {
       id: Date.now(),
       startTime: task.activeTimer.startTime,
       endTime: endTime.toISOString(),
-      duration: Math.round(duration * 100) / 100, // Round to 2 decimal places
+      duration: Math.round(duration * 100) / 100,
       description: description || task.activeTimer.description,
       date: startTime.toISOString().split('T')[0],
-      billable: task.billable || false
+      billable: task.billable || false,
+      hourlyRate: task.hourlyRate || 0
     };
 
     if (!task.timeEntries) {
@@ -773,13 +795,55 @@ async stopTimer(taskId, description = '') {
     const totalHours = task.timeEntries.reduce((sum, entry) => sum + entry.duration, 0);
     task.actualHours = Math.round(totalHours * 100) / 100;
 
+    // Remove timer
+    activeTaskTimers.delete(task.activeTimer.Id);
     task.activeTimer = null;
     task.updatedAt = new Date().toISOString();
+
+    toast.success('Timer stopped and time logged');
+    return tasks[index];
+  },
+
+  async pauseTimer(taskId) {
+    await delay(200);
+    const task = tasks.find(t => t.Id === parseInt(taskId));
+    if (!task?.activeTimer) {
+      throw new Error('No active timer found');
+    }
+
+    task.activeTimer.isPaused = true;
+    task.activeTimer.pauseStartTime = new Date().toISOString();
+    activeTaskTimers.set(task.activeTimer.Id, task.activeTimer);
+
+    const index = tasks.findIndex(t => t.Id === parseInt(taskId));
+    tasks[index] = { ...task, updatedAt: new Date().toISOString() };
 
     return tasks[index];
   },
 
-async addTimeEntry(taskId, timeEntry) {
+  async resumeTimer(taskId) {
+    await delay(200);
+    const task = tasks.find(t => t.Id === parseInt(taskId));
+    if (!task?.activeTimer) {
+      throw new Error('No active timer found');
+    }
+
+    if (task.activeTimer.isPaused && task.activeTimer.pauseStartTime) {
+      const pauseTime = new Date() - new Date(task.activeTimer.pauseStartTime);
+      task.activeTimer.pausedDuration = (task.activeTimer.pausedDuration || 0) + pauseTime;
+    }
+
+    task.activeTimer.isPaused = false;
+    delete task.activeTimer.pauseStartTime;
+    activeTaskTimers.set(task.activeTimer.Id, task.activeTimer);
+
+    const index = tasks.findIndex(t => t.Id === parseInt(taskId));
+    tasks[index] = { ...task, updatedAt: new Date().toISOString() };
+
+    return tasks[index];
+  },
+
+  async addTimeEntry(taskId, timeEntry) {
     if (!taskId || !timeEntry) {
       throw new Error('Task ID and time entry data are required');
     }
@@ -807,10 +871,11 @@ async addTimeEntry(taskId, timeEntry) {
     task.actualHours = Math.round(totalHours * 100) / 100;
     task.updatedAt = new Date().toISOString();
 
+    toast.success('Time entry added');
     return tasks[index];
   },
 
-async getTimeEntries(taskId) {
+  async getTimeEntries(taskId) {
     if (!taskId) {
       throw new Error('Task ID is required');
     }
@@ -822,7 +887,7 @@ async getTimeEntries(taskId) {
     return task.timeEntries || [];
   },
 
-async deleteTimeEntry(taskId, entryId) {
+  async deleteTimeEntry(taskId, entryId) {
     if (!taskId || !entryId) {
       throw new Error('Task ID and entry ID are required');
     }
@@ -844,11 +909,12 @@ async deleteTimeEntry(taskId, entryId) {
     task.actualHours = Math.round(totalHours * 100) / 100;
     task.updatedAt = new Date().toISOString();
 
+    toast.success('Time entry deleted');
     return tasks[index];
   },
 
   // Tag management
-async addTag(taskId, tag) {
+  async addTag(taskId, tag) {
     if (!taskId || !tag) {
       throw new Error('Task ID and tag are required');
     }
@@ -871,7 +937,7 @@ async addTag(taskId, tag) {
     return tasks[index];
   },
 
-async removeTag(taskId, tag) {
+  async removeTag(taskId, tag) {
     if (!taskId || !tag) {
       throw new Error('Task ID and tag are required');
     }
@@ -891,7 +957,7 @@ async removeTag(taskId, tag) {
   },
 
   // Filtering operations
-async getMyTasks(assignee) {
+  async getMyTasks(assignee) {
     if (!assignee) {
       throw new Error('Assignee is required');
     }
@@ -900,12 +966,12 @@ async getMyTasks(assignee) {
     return allTasks.filter(task => task.assignee === assignee);
   },
 
-async getTeamTasks() {
+  async getTeamTasks() {
     await delay(200);
     return await this.getAll();
   },
 
-async getProjectTasks(projectId) {
+  async getProjectTasks(projectId) {
     if (!projectId) {
       throw new Error('Project ID is required');
     }
@@ -914,7 +980,7 @@ async getProjectTasks(projectId) {
     return allTasks.filter(task => task.projectId === parseInt(projectId));
   },
 
-async getTasksByTags(tags) {
+  async getTasksByTags(tags) {
     if (!Array.isArray(tags) || tags.length === 0) {
       throw new Error('Tags array is required');
     }
@@ -926,7 +992,7 @@ async getTasksByTags(tags) {
   },
 
   // Bulk operations
-async bulkUpdateSubtasks(parentId, updates) {
+  async bulkUpdateSubtasks(parentId, updates) {
     if (!parentId || !Array.isArray(updates)) {
       throw new Error('Parent ID and updates array are required');
     }
@@ -962,7 +1028,7 @@ async bulkUpdateSubtasks(parentId, updates) {
           tasks[index].completedAt = new Date().toISOString();
         }
       }
-});
+    });
 
     // Update parent progress
     await this.updateTaskProgress(parentId);
@@ -974,6 +1040,12 @@ async bulkUpdateSubtasks(parentId, updates) {
   async getActiveTimer() {
     await delay(200);
     return tasks.find(task => task.activeTimer) || null;
+  },
+
+  // Get all active timers
+  async getAllActiveTimers() {
+    await delay(200);
+    return Array.from(activeTaskTimers.values());
   }
 }
 
