@@ -1,49 +1,47 @@
-import { useState, useEffect } from "react"
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns"
-import Chart from "react-apexcharts"
-import { toast } from "react-toastify"
-import Button from "@/components/atoms/Button"
-import Input from "@/components/atoms/Input"
-import Select from "@/components/atoms/Select"
-import Loading from "@/components/ui/Loading"
-import ErrorView from "@/components/ui/ErrorView"
-import MetricCard from "@/components/molecules/MetricCard"
-import expenseService from "@/services/api/expenseService"
-import clientService from "@/services/api/clientService"
-import projectService from "@/services/api/projectService"
+import React, { useEffect, useState } from "react";
+import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
+import { toast } from "react-toastify";
+import expenseService from "@/services/api/expenseService";
+import clientService from "@/services/api/clientService";
+import ApperIcon from "@/components/ApperIcon";
+import Loading from "@/components/ui/Loading";
+import ErrorView from "@/components/ui/ErrorView";
+import Select from "@/components/atoms/Select";
+import Button from "@/components/atoms/Button";
+import Input from "@/components/atoms/Input";
+import ExpenseTable from "@/components/organisms/ExpenseTable";
+import Expenses from "@/components/pages/Expenses";
+import MetricCard from "@/components/molecules/MetricCard";
+import StatusBadge from "@/components/molecules/StatusBadge";
 
-const ExpenseReports = () => {
+const EmployeeExpenseReport = () => {
   const [reportData, setReportData] = useState(null)
   const [clients, setClients] = useState([])
-  const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [dateRange, setDateRange] = useState({
     startDate: format(startOfMonth(subMonths(new Date(), 5)), "yyyy-MM-dd"),
     endDate: format(endOfMonth(new Date()), "yyyy-MM-dd")
   })
-  const [periodType, setPeriodType] = useState("month")
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("")
+  const [statusFilter, setStatusFilter] = useState("")
 
   useEffect(() => {
     loadInitialData()
   }, [])
 
   useEffect(() => {
-    if (clients.length > 0 && projects.length > 0) {
+    if (clients.length > 0) {
       loadReportData()
     }
-  }, [dateRange, periodType, clients, projects])
+  }, [dateRange, clients])
 
-  const loadInitialData = async () => {
+const loadInitialData = async () => {
     try {
-      const [clientsData, projectsData] = await Promise.all([
-        clientService.getAll(),
-        projectService.getAll()
-      ])
+      const clientsData = await clientService.getAll()
       setClients(clientsData)
-      setProjects(projectsData)
     } catch (err) {
-      setError("Failed to load reference data")
+      setError("Failed to load employee data")
       console.error("Error loading initial data:", err)
     }
   }
@@ -52,32 +50,62 @@ const ExpenseReports = () => {
     try {
       setLoading(true)
       setError("")
-      const data = await expenseService.getExpenseReports(
+      const data = await expenseService.getEmployeeExpenseReport(
         dateRange.startDate, 
         dateRange.endDate
       )
       setReportData(data)
     } catch (err) {
-      setError("Failed to load expense reports")
+      setError("Failed to load employee expense report")
       console.error("Error loading reports:", err)
-      toast.error("Failed to load expense reports")
+      toast.error("Failed to load employee expense report")
     } finally {
       setLoading(false)
     }
   }
 
-  const getProjectName = (projectId) => {
-    if (projectId === 'unassigned') return 'Unassigned'
-    const project = projects.find(p => p.Id === projectId)
-    return project ? project.name : 'Unknown Project'
+const getEmployeeName = (employeeId) => {
+    if (employeeId === 'unassigned') return 'Unassigned'
+    const employee = clients.find(c => c.Id === employeeId)
+    return employee ? `${employee.name} - ${employee.company}` : 'Unknown Employee'
   }
 
   const formatCurrency = (amount) => `$${amount.toLocaleString()}`
 
-  const formatCategoryName = (category) => {
-    return category.split('-').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ')
+  const getFilteredEmployees = () => {
+    if (!reportData?.byEmployee) return []
+    let filtered = reportData.byEmployee
+
+    if (selectedEmployeeId) {
+      filtered = filtered.filter(emp => emp.employeeId === parseInt(selectedEmployeeId))
+    }
+
+    if (statusFilter) {
+      filtered = filtered.filter(emp => {
+        if (statusFilter === 'pending') return emp.pendingAmount > 0
+        if (statusFilter === 'approved') return emp.approvedAmount > 0
+        if (statusFilter === 'reimbursed') return emp.reimbursedAmount > 0
+        if (statusFilter === 'rejected') return emp.rejectedAmount > 0
+        return true
+      })
+    }
+
+    return filtered
+  }
+
+  const getFilteredExpenses = () => {
+    if (!reportData?.expenses) return []
+    let filtered = reportData.expenses
+
+    if (selectedEmployeeId) {
+      filtered = filtered.filter(exp => exp.clientId === parseInt(selectedEmployeeId))
+    }
+
+    if (statusFilter) {
+      filtered = filtered.filter(exp => exp.status === statusFilter)
+    }
+
+    return filtered
   }
 
   // Chart Configurations
@@ -261,19 +289,18 @@ const ExpenseReports = () => {
     theme: getChartTheme()
   }
 
-  if (loading) return <Loading type="page" />
+if (loading) return <Loading type="page" />
   if (error) return <ErrorView error={error} onRetry={loadReportData} />
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
-            Expense Reports
+            Employee Expense Report
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-2">
-            Comprehensive expense analytics and insights
+            Team member expense analysis, reimbursement tracking, and approval status
           </p>
         </div>
         <Button 
@@ -286,9 +313,9 @@ const ExpenseReports = () => {
         </Button>
       </div>
 
-      {/* Filters */}
+{/* Filters */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Start Date
@@ -311,21 +338,39 @@ const ExpenseReports = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Period Type
+              Team Member
             </label>
             <Select
-              value={periodType}
-              onChange={(e) => setPeriodType(e.target.value)}
+              value={selectedEmployeeId}
+              onChange={(e) => setSelectedEmployeeId(e.target.value)}
             >
-              <option value="month">Monthly</option>
-              <option value="week">Weekly</option>
-              <option value="year">Yearly</option>
+              <option value="">All Employees</option>
+              {clients.map(client => (
+                <option key={client.Id} value={client.Id}>
+                  {client.name} - {client.company}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Status Filter
+            </label>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="pending">Pending Approval</option>
+              <option value="approved">Approved (Awaiting Reimbursement)</option>
+              <option value="reimbursed">Reimbursed</option>
+              <option value="rejected">Rejected</option>
             </Select>
           </div>
         </div>
       </div>
 
-      {/* Summary Metrics */}
+{/* Summary Metrics */}
       {reportData && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           <MetricCard
@@ -336,138 +381,181 @@ const ExpenseReports = () => {
             className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20"
           />
           <MetricCard
-            title="Total Transactions"
-            value={reportData.expenseCount.toLocaleString()}
-            icon="Receipt"
+            title="Reimbursed Amount"
+            value={formatCurrency(reportData.reimbursementStatus?.reimbursed || 0)}
+            icon="CheckCircle"
             trend={null}
             className="bg-gradient-to-br from-success-50 to-success-100 dark:from-success-900/20 dark:to-success-800/20"
           />
           <MetricCard
-            title="Categories"
-            value={reportData.byCategory?.length || 0}
-            icon="Tag"
+            title="Pending Approvals"
+            value={`${reportData.pendingApprovals?.count || 0} (${formatCurrency(reportData.pendingApprovals?.totalAmount || 0)})`}
+            icon="Clock"
             trend={null}
             className="bg-gradient-to-br from-warning-50 to-warning-100 dark:from-warning-900/20 dark:to-warning-800/20"
           />
           <MetricCard
-            title="Projects"
-            value={reportData.byProject?.length || 0}
-            icon="FolderOpen"
+            title="Outstanding Amount"
+            value={formatCurrency(reportData.reimbursementStatus?.totalOutstanding || 0)}
+            icon="AlertCircle"
             trend={null}
-            className="bg-gradient-to-br from-accent-50 to-accent-100 dark:from-accent-900/20 dark:to-accent-800/20"
+            className="bg-gradient-to-br from-error-50 to-error-100 dark:from-error-900/20 dark:to-error-800/20"
           />
         </div>
-      )}
+)}
 
-      {/* Charts Grid */}
-      <div className="space-y-6">
-        {/* Period Trend Chart */}
+      {/* Team Member Breakdown */}
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+          <ApperIcon name="Users" className="h-5 w-5 text-primary-600" />
+          Employee Expense Summary
+        </h3>
+        
+        <div className="space-y-4">
+          {getFilteredEmployees().map((employee) => (
+            <div key={employee.employeeId} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-slate-900 dark:text-slate-100">
+                  {getEmployeeName(employee.employeeId)}
+                </h4>
+                <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  {formatCurrency(employee.totalAmount)}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="text-center p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-700">
+                  <div className="text-xs font-medium text-yellow-700 dark:text-yellow-300">Pending</div>
+                  <div className="text-sm font-bold text-yellow-900 dark:text-yellow-100">
+                    {formatCurrency(employee.pendingAmount)}
+                  </div>
+                </div>
+                <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
+                  <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Approved</div>
+                  <div className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                    {formatCurrency(employee.approvedAmount)}
+                  </div>
+                </div>
+                <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-700">
+                  <div className="text-xs font-medium text-green-700 dark:text-green-300">Reimbursed</div>
+                  <div className="text-sm font-bold text-green-900 dark:text-green-100">
+                    {formatCurrency(employee.reimbursedAmount)}
+                  </div>
+                </div>
+                <div className="text-center p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-700">
+                  <div className="text-xs font-medium text-red-700 dark:text-red-300">Rejected</div>
+                  <div className="text-sm font-bold text-red-900 dark:text-red-100">
+                    {formatCurrency(employee.rejectedAmount)}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                {employee.expenseCount} expenses total
+              </div>
+            </div>
+          ))}
+          
+          {getFilteredEmployees().length === 0 && (
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+              No employees found for the selected filters
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Reimbursement Status Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-            Expenses by Period
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <ApperIcon name="CheckCircle" className="h-5 w-5 text-primary-600" />
+            Reimbursement Status
           </h3>
-          {reportData?.byPeriod?.length > 0 ? (
-            <Chart
-              options={periodChartOptions}
-              series={[{
-                name: "Expenses",
-                data: reportData.byPeriod.map(item => item.amount)
-              }]}
-              type="line"
-              height={350}
-            />
-          ) : (
-            <div className="h-64 flex items-center justify-center text-slate-500">
-              No data available for the selected period
+          
+          {reportData?.reimbursementStatus && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-700">
+                <span className="text-green-700 dark:text-green-300 font-medium">Reimbursed</span>
+                <span className="text-green-900 dark:text-green-100 font-bold">
+                  {formatCurrency(reportData.reimbursementStatus.reimbursed)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
+                <span className="text-blue-700 dark:text-blue-300 font-medium">Pending Reimbursement</span>
+                <span className="text-blue-900 dark:text-blue-100 font-bold">
+                  {formatCurrency(reportData.reimbursementStatus.pendingReimbursement)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-700">
+                <span className="text-yellow-700 dark:text-yellow-300 font-medium">Awaiting Approval</span>
+                <span className="text-yellow-900 dark:text-yellow-100 font-bold">
+                  {formatCurrency(reportData.reimbursementStatus.awaitingApproval)}
+                </span>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Category Breakdown */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-              Expenses by Category
-            </h3>
-            {reportData?.byCategory?.length > 0 ? (
-              <Chart
-                options={categoryChartOptions}
-                series={reportData.byCategory.map(item => item.amount)}
-                type="donut"
-                height={350}
-              />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-slate-500">
-                No category data available
-              </div>
-            )}
-          </div>
-
-          {/* Billable vs Non-Billable */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-              Billable vs Non-Billable
-            </h3>
-            {reportData?.billableVsNonBillable?.length > 0 ? (
-              <Chart
-                options={billableChartOptions}
-                series={reportData.billableVsNonBillable.map(item => item.amount)}
-                type="pie"
-                height={350}
-              />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-slate-500">
-                No billable data available
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Projects */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-              Top Projects by Expense
-            </h3>
-            {reportData?.byProject?.length > 0 ? (
-              <Chart
-                options={projectChartOptions}
-                series={[{
-                  name: "Expenses",
-                  data: reportData.byProject.slice(0, 10).map(item => item.amount)
-                }]}
-                type="bar"
-                height={350}
-              />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-slate-500">
-                No project data available
-              </div>
-            )}
-          </div>
-
-          {/* Approval Status */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-              Expenses by Approval Status
-            </h3>
-            {reportData?.approvalStatus?.length > 0 ? (
-              <Chart
-                options={statusChartOptions}
-                series={reportData.approvalStatus.map(item => item.amount)}
-                type="donut"
-                height={350}
-              />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-slate-500">
-                No approval status data available
-              </div>
-            )}
-          </div>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <ApperIcon name="Clock" className="h-5 w-5 text-primary-600" />
+            Pending Approvals ({reportData?.pendingApprovals?.count || 0})
+          </h3>
+          
+          {reportData?.pendingApprovals?.expenses?.length > 0 ? (
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {reportData.pendingApprovals.expenses.slice(0, 5).map((expense) => (
+                <div key={expense.Id} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded">
+                  <div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate max-w-32">
+                      {expense.description}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {getEmployeeName(expense.clientId)} • {format(new Date(expense.date), "MMM dd")}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      {formatCurrency(expense.amount)}
+                    </div>
+                    <StatusBadge status={expense.status} type="expense" />
+                  </div>
+                </div>
+              ))}
+              
+              {reportData.pendingApprovals.expenses.length > 5 && (
+                <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-2">
+                  +{reportData.pendingApprovals.expenses.length - 5} more pending...
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+              No pending approvals
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Detailed Expense List */}
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+          <ApperIcon name="List" className="h-5 w-5 text-primary-600" />
+          Filtered Expense Details
+        </h3>
+        
+        <ExpenseTable
+          expenses={getFilteredExpenses()}
+          clients={clients}
+          projects={[]}
+          loading={false}
+          onEdit={(expense) => toast.info("Edit functionality would be implemented here")}
+          onDelete={(expense) => toast.info("Delete functionality would be implemented here")}
+          onStatusChange={(expense, status) => toast.info("Status change functionality would be implemented here")}
+        />
+      </div>
+</div>
   )
 }
 
-export default ExpenseReports
+export default EmployeeExpenseReport

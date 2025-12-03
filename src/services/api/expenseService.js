@@ -97,6 +97,93 @@ async getByCategory(category) {
     }
   },
 
+  // Employee Expense Report Methods
+  async getEmployeeExpenseReport(startDate, endDate) {
+    await new Promise(resolve => setTimeout(resolve, 300))
+    const filteredExpenses = startDate && endDate 
+      ? await this.getByDateRange(startDate, endDate)
+      : expenses.map(e => ({ ...e }))
+
+    // Group expenses by team member (clientId)
+    const byEmployee = this.groupExpensesByEmployee(filteredExpenses)
+    
+    // Calculate reimbursement totals
+    const reimbursementStatus = this.getReimbursementBreakdown(filteredExpenses)
+    
+    // Get pending approvals
+    const pendingApprovals = this.getPendingApprovals(filteredExpenses)
+
+    return {
+      totalExpenses: filteredExpenses.reduce((sum, e) => sum + e.amount, 0),
+      expenseCount: filteredExpenses.length,
+      byEmployee,
+      reimbursementStatus,
+      pendingApprovals,
+      approvalStatus: this.getApprovalBreakdown(filteredExpenses),
+      expenses: filteredExpenses
+    }
+  },
+
+  groupExpensesByEmployee(expenseList) {
+    const grouped = {}
+    expenseList.forEach(expense => {
+      const employeeId = expense.clientId || 'unassigned'
+      if (!grouped[employeeId]) {
+        grouped[employeeId] = { 
+          employeeId, 
+          totalAmount: 0, 
+          expenseCount: 0,
+          reimbursedAmount: 0,
+          pendingAmount: 0,
+          approvedAmount: 0,
+          rejectedAmount: 0,
+          expenses: []
+        }
+      }
+      grouped[employeeId].totalAmount += expense.amount
+      grouped[employeeId].expenseCount++
+      grouped[employeeId].expenses.push(expense)
+      
+      // Track amounts by status
+      if (expense.status === 'reimbursed') {
+        grouped[employeeId].reimbursedAmount += expense.amount
+      } else if (expense.status === 'pending') {
+        grouped[employeeId].pendingAmount += expense.amount
+      } else if (expense.status === 'approved') {
+        grouped[employeeId].approvedAmount += expense.amount
+      } else if (expense.status === 'rejected') {
+        grouped[employeeId].rejectedAmount += expense.amount
+      }
+    })
+
+    return Object.values(grouped).sort((a, b) => b.totalAmount - a.totalAmount)
+  },
+
+  getReimbursementBreakdown(expenseList) {
+    const reimbursed = expenseList.filter(e => e.status === 'reimbursed').reduce((sum, e) => sum + e.amount, 0)
+    const pendingReimbursement = expenseList.filter(e => e.status === 'approved').reduce((sum, e) => sum + e.amount, 0)
+    const awaitingApproval = expenseList.filter(e => e.status === 'pending').reduce((sum, e) => sum + e.amount, 0)
+    const rejected = expenseList.filter(e => e.status === 'rejected').reduce((sum, e) => sum + e.amount, 0)
+    
+    return {
+      reimbursed,
+      pendingReimbursement,
+      awaitingApproval,
+      rejected,
+      totalProcessed: reimbursed + pendingReimbursement,
+      totalOutstanding: awaitingApproval + pendingReimbursement
+    }
+  },
+
+  getPendingApprovals(expenseList) {
+    const pendingExpenses = expenseList.filter(e => e.status === 'pending')
+    return {
+      count: pendingExpenses.length,
+      totalAmount: pendingExpenses.reduce((sum, e) => sum + e.amount, 0),
+      expenses: pendingExpenses.sort((a, b) => new Date(a.date) - new Date(b.date))
+    }
+  },
+
   async getExpensesByProject(projectId) {
     await new Promise(resolve => setTimeout(resolve, 200))
     
