@@ -221,145 +221,53 @@ const handleStatusChange = async (taskId, newStatus) => {
     }
   };
 
-  // Load data on component mount
+// Load data on component mount
   useEffect(() => {
     loadData()
   }, [])
 
   if (loading) return <Loading />
   if (error) return <ErrorView error={error} onRetry={loadData} />
+if (error) return <ErrorView error={error} onRetry={loadData} />
 
-  return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-            <ApperIcon name="CheckSquare" size={24} className="text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tasks</h1>
-            <p className="text-slate-600 dark:text-slate-400">
-              {filteredTasks.length} of {tasks.length} task{tasks.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadTasks}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors duration-200"
-          >
-            <ApperIcon name="RefreshCw" size={16} />
-            Refresh
-          </button>
-          <button
-            onClick={() => {
-              setEditingTask(null);
-              setShowForm(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200"
-          >
-            <ApperIcon name="Plus" size={16} />
-            Add Task
-          </button>
-        </div>
-      </div>
-
-
-      {/* Task Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <TaskForm
-              task={editingTask}
-              onSubmit={handleFormSubmit}
-              onCancel={() => {
-                setShowForm(false);
-                setEditingTask(null);
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Tasks Grid */}
-      {filteredTasks.length === 0 ? (
-        tasks.length === 0 ? (
-          <Empty
-            title="No tasks yet"
-            description="Create your first task to get started with project management."
-            icon="CheckSquare"
-            action={{
-              label: "Create Task",
-              onClick: () => {
-                setEditingTask(null);
-                setShowForm(true);
-              }
-            }}
-            className="mt-12"
-          />
-        ) : (
-          <Empty
-            title="No tasks found"
-            description="Try adjusting your filters or search query to find what you're looking for."
-            icon="Search"
-            className="mt-12"
-          />
-        )
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredTasks.map(task => (
-            <TaskCard
-              key={task.Id}
-              task={task}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onStatusChange={handleStatusChange}
-            />
-          ))}
-        </div>
-      )}
-</div>
-  );
-
+  // Load data on component mount
+  useEffect(() => {
+    loadData()
+  }, [])
+  // Helper functions
   const handleCreateTask = (status = null) => {
-    setSelectedTask(null)
+    setEditingTask(null)
     setDefaultStatus(status)
     setShowForm(true)
   }
 
-  const handleEditTask = (task) => {
-    setSelectedTask(task)
-    setDefaultStatus(null)
-    setShowForm(true)
+  const getProjectName = (projectId) => {
+    const project = projects.find(p => p.Id === projectId)
+    return project?.name || `Project ${projectId}`
   }
 
-  const handleDeleteTask = async (task) => {
-    if (!confirm(`Are you sure you want to delete "${task.title}"?`)) {
-      return
+  const getPriorityColor = (priority) => {
+    const colors = {
+      'Low': 'text-green-600',
+      'Medium': 'text-blue-600',
+      'High': 'text-orange-600',
+      'Urgent': 'text-red-600'
     }
+    return colors[priority] || 'text-slate-600'
+  }
 
-    try {
-      await taskService.delete(task.Id)
-      toast.success('Task deleted successfully')
-      loadData()
-    } catch (err) {
-      toast.error('Failed to delete task')
-      console.error('Error deleting task:', err)
+  const getDueDateColor = (dueDate, status) => {
+    if (!dueDate || status === 'Completed') return 'text-slate-600'
+    
+    const due = new Date(dueDate)
+    const today = new Date()
+    
+    if (isBefore(due, today)) {
+      return 'text-red-600'
+    } else if (isBefore(due, new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000))) {
+      return 'text-amber-600'
     }
-  }
-
-  const handleSaveTask = async (savedTask) => {
-    setShowForm(false)
-    setSelectedTask(null)
-    setDefaultStatus(null)
-    await loadData()
-  }
-
-  const handleTaskUpdate = (updatedTask) => {
-    setTasks(prev => prev.map(task => 
-      task.Id === updatedTask.Id ? updatedTask : task
-    ))
+    return 'text-slate-600'
   }
 
   const handleStartTimer = async (taskId) => {
@@ -406,36 +314,12 @@ const handleStatusChange = async (taskId, newStatus) => {
     }
   }
 
-  const getProjectName = (projectId) => {
-    const project = projects.find(p => p.Id === projectId)
-    return project?.name || `Project ${projectId}`
+  const handleTaskUpdate = (updatedTask) => {
+    setTasks(prev => prev.map(task => 
+      task.Id === updatedTask.Id ? updatedTask : task
+    ))
   }
-
-  const getPriorityColor = (priority) => {
-    const colors = {
-      'Low': 'text-green-600',
-      'Medium': 'text-blue-600',
-      'High': 'text-orange-600',
-      'Urgent': 'text-red-600'
-    }
-    return colors[priority] || 'text-slate-600'
-  }
-
-  const getDueDateColor = (dueDate, status) => {
-    if (!dueDate || status === 'Completed') return 'text-slate-600'
-    
-    const due = new Date(dueDate)
-    const today = new Date()
-    
-    if (isBefore(due, today)) {
-      return 'text-red-600'
-    } else if (isBefore(due, new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000))) {
-      return 'text-amber-600'
-    }
-    return 'text-slate-600'
-  }
-
-  return (
+return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -540,7 +424,7 @@ const handleStatusChange = async (taskId, newStatus) => {
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">
-Filters
+            Filters
           </h3>
           {(filters.search || filters.status || filters.priority || filters.projectId || filters.assignee || filters.type || filters.dueDateFrom || filters.dueDateTo) && (
             <Button
@@ -627,13 +511,13 @@ Filters
       </div>
 
       {/* Content */}
-{view === 'kanban' ? (
+      {view === 'kanban' ? (
         <TaskKanban
           tasks={filteredTasks}
           loading={loading}
           onTaskUpdate={handleTaskUpdate}
-          onTaskEdit={handleEditTask}
-          onTaskDelete={handleDeleteTask}
+          onTaskEdit={handleEdit}
+          onTaskDelete={handleDelete}
           onCreateTask={handleCreateTask}
           projects={projects}
         />
@@ -662,7 +546,7 @@ Filters
                   </tr>
                 </thead>
                 <tbody>
-{filteredTasks.map((task) => (
+                  {filteredTasks.map((task) => (
                     <tr 
                       key={task.Id} 
                       className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
@@ -837,14 +721,14 @@ Filters
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEditTask(task)}
+                            onClick={() => handleEdit(task)}
                           >
                             <ApperIcon name="Edit" className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteTask(task)}
+                            onClick={() => handleDelete(task)}
                             className="text-red-600 hover:text-red-700"
                           >
                             <ApperIcon name="Trash2" className="w-4 h-4" />
@@ -863,14 +747,21 @@ Filters
       {/* Task Form */}
       {showForm && (
         <TaskForm
-          task={selectedTask}
+          task={editingTask || selectedTask}
           isOpen={showForm}
           onClose={() => {
             setShowForm(false)
+            setEditingTask(null)
             setSelectedTask(null)
             setDefaultStatus(null)
           }}
-          onSave={handleSaveTask}
+          onSave={async (savedTask) => {
+            setShowForm(false)
+            setEditingTask(null)
+            setSelectedTask(null)
+            setDefaultStatus(null)
+            await loadData()
+          }}
           projects={projects}
           defaultStatus={defaultStatus}
         />
