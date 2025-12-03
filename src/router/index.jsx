@@ -36,7 +36,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-const mainRoutes = [
+const mainRoutes = 
   {
     path: "",
     index: true,
