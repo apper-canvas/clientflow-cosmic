@@ -36,7 +36,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-const mainRoutes = 
+const mainRoutes = [
   {
     path: "",
     index: true,
@@ -86,7 +86,7 @@ const mainRoutes =
     path: "expenses",
     element: <Suspense fallback={<LoadingFallback />}><Expenses /></Suspense>
   },
-{
+  {
     path: "tax-reports", 
     element: <Suspense fallback={<LoadingFallback />}><ExpenseReports /></Suspense>
   },
@@ -104,13 +104,13 @@ const mainRoutes =
   },
   {
     path: "schools",
-    element: <Suspense fallback={<LoadingFallback />}><Schools /></Suspense>
+    element: <Suspense fallback={<LoadingFallback />}><ComingSoon /></Suspense>
   },
   {
     path: "coming-soon",
     element: <Suspense fallback={<LoadingFallback />}><ComingSoon /></Suspense>
   },
-{
+  {
     path: "reports",
     element: <Suspense fallback={<LoadingFallback />}><Reports /></Suspense>
   },
