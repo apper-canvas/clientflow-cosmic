@@ -9,7 +9,7 @@ import TaskKanban from "@/components/organisms/TaskKanban";
 import Projects from "@/components/pages/Projects";
 import SearchBar from "@/components/molecules/SearchBar";
 import StatusBadge from "@/components/molecules/StatusBadge";
-import Empty from "@/components/molecules/Empty";
+import Empty from "@/components/ui/Empty";
 
 const TASK_STATUSES = {
   TODO: 'To Do',
