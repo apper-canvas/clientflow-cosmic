@@ -164,46 +164,105 @@ const Projects = () => {
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {projectStats.total}
+{/* Stats Cards */}
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Project Overview
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              Summary of your project portfolio
+            </p>
           </div>
-          <div className="text-sm text-slate-600 dark:text-slate-400">
-            Total Projects
+          <Button 
+            variant="secondary"
+            onClick={() => navigate('/reports')}
+            className="shrink-0"
+          >
+            <ApperIcon name="BarChart3" className="w-4 h-4 mr-2" />
+            View Reports
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {projectStats.total}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Total Projects
+            </div>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+            <div className="text-2xl font-bold text-blue-600">
+              {projectStats.planning}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Planning
+            </div>
+          </div>
+          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
+            <div className="text-2xl font-bold text-amber-600">
+              {projectStats.inProgress}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              In Progress
+            </div>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+            <div className="text-2xl font-bold text-green-600">
+              {projectStats.completed}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Completed
+            </div>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-slate-600">
+              {projectStats.onHold}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              On Hold
+            </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-          <div className="text-2xl font-bold text-blue-600">
-            {projectStats.planning}
-          </div>
-          <div className="text-sm text-slate-600 dark:text-slate-400">
-            Planning
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-          <div className="text-2xl font-bold text-amber-600">
-            {projectStats.inProgress}
-          </div>
-          <div className="text-sm text-slate-600 dark:text-slate-400">
-            In Progress
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-          <div className="text-2xl font-bold text-green-600">
-            {projectStats.completed}
-          </div>
-          <div className="text-sm text-slate-600 dark:text-slate-400">
-            Completed
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-          <div className="text-2xl font-bold text-slate-600">
-            {projectStats.onHold}
-          </div>
-          <div className="text-sm text-slate-600 dark:text-slate-400">
-            On Hold
+
+        {/* Quick Metrics */}
+        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-600">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="text-center">
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {Math.round((projectStats.completed / (projectStats.total || 1)) * 100)}%
+              </div>
+              <div className="text-slate-600 dark:text-slate-400">
+                Completion Rate
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {Math.round((projectStats.inProgress / (projectStats.total || 1)) * 100)}%
+              </div>
+              <div className="text-slate-600 dark:text-slate-400">
+                Active Projects
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {clients.length}
+              </div>
+              <div className="text-slate-600 dark:text-slate-400">
+                Active Clients
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {projectStats.onHold > 0 ? projectStats.onHold : '-'}
+              </div>
+              <div className="text-slate-600 dark:text-slate-400">
+                On Hold
+              </div>
+            </div>
           </div>
         </div>
       </div>
