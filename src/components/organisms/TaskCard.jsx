@@ -1,7 +1,7 @@
 import React from "react";
 import { format } from "date-fns";
 import ApperIcon from "@/components/ApperIcon";
-import { StatusBadge } from "@/components/molecules/StatusBadge";
+import StatusBadge from "@/components/molecules/StatusBadge";
 const getPriorityColor = (priority) => {
   switch (priority) {
     case 'high': return 'text-red-600 bg-red-50 border-red-200';
