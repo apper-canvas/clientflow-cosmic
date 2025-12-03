@@ -33,7 +33,7 @@ const Tasks = () => {
   const [selectedTask, setSelectedTask] = useState(null)
   const [defaultStatus, setDefaultStatus] = useState(null)
   
-  // Filter state
+// Filter state
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -45,44 +45,118 @@ const Tasks = () => {
     dueDateTo: ''
   })
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  // Missing state variables
+  const [editingTask, setEditingTask] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [priorityFilter, setPriorityFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    applyFilters()
-  }, [tasks, filters])
-
+  // Load data function
   const loadData = async () => {
     try {
       setLoading(true)
       setError('')
-      const [tasksData, projectsData, statsData] = await Promise.all([
+      
+      const [tasksResponse, projectsResponse] = await Promise.all([
         taskService.getAll(),
-        projectService.getAll(),
-        taskService.getStats()
+        projectService.getAll()
       ])
-      setTasks(tasksData)
-      setProjects(projectsData)
-      setStats(statsData)
+      
+      setTasks(tasksResponse?.data || [])
+      setProjects(projectsResponse?.data || [])
+      
+      // Calculate stats
+      const taskData = tasksResponse?.data || []
+      const stats = {
+        total: taskData.length,
+        completed: taskData.filter(t => t.status === 'Completed').length,
+        overdue: taskData.filter(t => {
+          if (!t.dueDate || t.status === 'Completed') return false
+          return new Date(t.dueDate) < new Date()
+        }).length,
+        byStatus: {},
+        byPriority: {}
+      }
+      
+      // Group by status and priority
+      taskData.forEach(task => {
+        stats.byStatus[task.status] = (stats.byStatus[task.status] || 0) + 1
+        stats.byPriority[task.priority] = (stats.byPriority[task.priority] || 0) + 1
+      })
+      
+      setStats(stats)
     } catch (err) {
-      setError('Failed to load tasks data')
+      setError(err.message || 'Failed to load tasks')
       console.error('Error loading tasks:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const applyFilters = async () => {
-    try {
-      const filtered = await taskService.getAll(filters)
-      setFilteredTasks(filtered)
-    } catch (err) {
-      console.error('Error filtering tasks:', err)
-      setFilteredTasks(tasks)
-    }
-  }
+  // Load tasks function for compatibility
+  const loadTasks = loadData
 
+  // Filter tasks based on current filters
+  useEffect(() => {
+    let filtered = tasks
+
+    // Apply search filter
+    if (filters.search?.trim()) {
+      const query = filters.search.toLowerCase().trim()
+      filtered = filtered.filter(task =>
+        task.title?.toLowerCase().includes(query) ||
+        task.description?.toLowerCase().includes(query) ||
+        task.assignee?.toLowerCase().includes(query) ||
+        task.tags?.some(tag => tag.toLowerCase().includes(query))
+      )
+    }
+
+    // Apply status filter
+    if (filters.status) {
+      filtered = filtered.filter(task => task.status === filters.status)
+    }
+
+    // Apply priority filter
+    if (filters.priority) {
+      filtered = filtered.filter(task => task.priority === filters.priority)
+    }
+
+    // Apply project filter
+    if (filters.projectId) {
+      filtered = filtered.filter(task => task.projectId === filters.projectId)
+    }
+
+    // Apply assignee filter
+    if (filters.assignee?.trim()) {
+      const assigneeQuery = filters.assignee.toLowerCase().trim()
+      filtered = filtered.filter(task => 
+        task.assignee?.toLowerCase().includes(assigneeQuery)
+      )
+    }
+
+    // Apply type filter
+    if (filters.type) {
+      filtered = filtered.filter(task => task.type === filters.type)
+    }
+
+    // Apply due date filters
+    if (filters.dueDateFrom) {
+      filtered = filtered.filter(task => 
+        task.dueDate && new Date(task.dueDate) >= new Date(filters.dueDateFrom)
+      )
+    }
+    
+    if (filters.dueDateTo) {
+      filtered = filtered.filter(task => 
+        task.dueDate && new Date(task.dueDate) <= new Date(filters.dueDateTo)
+      )
+    }
+
+    setFilteredTasks(filtered)
+  }, [tasks, filters])
+
+  // Handle filter changes
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
       ...prev,
@@ -90,6 +164,7 @@ const Tasks = () => {
     }))
   }
 
+  // Clear filters
   const handleClearFilters = () => {
     setFilters({
       search: '',
@@ -102,6 +177,246 @@ const Tasks = () => {
       dueDateTo: ''
     })
   }
+
+  // Form handlers
+  const handleFormSubmit = async (taskData) => {
+    try {
+      if (editingTask) {
+        await taskService.update(editingTask.Id, taskData)
+        toast.success('Task updated successfully')
+      } else {
+        await taskService.create(taskData)
+        toast.success('Task created successfully')
+      }
+      setShowForm(false)
+      setEditingTask(null)
+      loadData()
+    } catch (err) {
+      toast.error(editingTask ? 'Failed to update task' : 'Failed to create task')
+      console.error('Error saving task:', err)
+    }
+  }
+
+  const handleEdit = (task) => {
+    setEditingTask(task)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (task) => {
+    if (!confirm(`Are you sure you want to delete "${task.title}"?`)) {
+      return
+    }
+
+    try {
+      await taskService.delete(task.Id)
+      toast.success('Task deleted successfully')
+      loadData()
+    } catch (err) {
+      toast.error('Failed to delete task')
+      console.error('Error deleting task:', err)
+    }
+  }
+
+  // Load data on component mount
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const handleEdit = (task) => {
+    setEditingTask(task);
+    setShowForm(true);
+  };
+
+  const handleStatusChange = async (taskId, newStatus) => {
+    try {
+      await taskService.update(taskId, { status: newStatus });
+      loadTasks();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
+  };
+
+  const getFilteredTasks = () => {
+    let filtered = tasks;
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(task => task.status === statusFilter);
+    }
+
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter(task => task.priority === priorityFilter);
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(task =>
+        task.title.toLowerCase().includes(query) ||
+        task.description?.toLowerCase().includes(query) ||
+        task.assignedTo?.toLowerCase().includes(query) ||
+        task.tags?.some(tag => tag.name.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
+  };
+
+  const filteredTasks = getFilteredTasks();
+
+  if (isLoading) return <Loading />;
+  if (error) return <ErrorView message={error} onRetry={loadTasks} />;
+
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+            <ApperIcon name="CheckSquare" size={24} className="text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tasks</h1>
+            <p className="text-slate-600 dark:text-slate-400">
+              {filteredTasks.length} of {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadTasks}
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors duration-200"
+          >
+            <ApperIcon name="RefreshCw" size={16} />
+            Refresh
+          </button>
+          <button
+            onClick={() => {
+              setEditingTask(null);
+              setShowForm(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200"
+          >
+            <ApperIcon name="Plus" size={16} />
+            Add Task
+          </button>
+        </div>
+      </div>
+
+      {/* Enhanced Filters */}
+      <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+        {/* Search */}
+        <div className="flex-1 min-w-64 relative">
+          <ApperIcon name="Search" size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search tasks, assignees, or tags..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* Status Filter */}
+        <div className="flex items-center gap-2">
+          <ApperIcon name="Filter" size={16} className="text-slate-500" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            <option value="all">All Status</option>
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+
+        {/* Priority Filter */}
+        <div className="flex items-center gap-2">
+          <ApperIcon name="Flag" size={16} className="text-slate-500" />
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            <option value="all">All Priority</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
+        {/* Clear Filters */}
+        {(statusFilter !== 'all' || priorityFilter !== 'all' || searchQuery.trim()) && (
+          <button
+            onClick={() => {
+              setStatusFilter('all');
+              setPriorityFilter('all');
+              setSearchQuery('');
+            }}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors duration-200"
+          >
+            <ApperIcon name="X" size={14} />
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Task Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <TaskForm
+              task={editingTask}
+              onSubmit={handleFormSubmit}
+              onCancel={() => {
+                setShowForm(false);
+                setEditingTask(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Tasks Grid */}
+      {filteredTasks.length === 0 ? (
+        tasks.length === 0 ? (
+          <Empty
+            title="No tasks yet"
+            description="Create your first task to get started with project management."
+            icon="CheckSquare"
+            action={{
+              label: "Create Task",
+              onClick: () => {
+                setEditingTask(null);
+                setShowForm(true);
+              }
+            }}
+            className="mt-12"
+          />
+        ) : (
+          <Empty
+            title="No tasks found"
+            description="Try adjusting your filters or search query to find what you're looking for."
+            icon="Search"
+            className="mt-12"
+          />
+        )
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredTasks.map(task => (
+            <TaskCard
+              key={task.Id}
+              task={task}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onStatusChange={handleStatusChange}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
   const handleCreateTask = (status = null) => {
     setSelectedTask(null)

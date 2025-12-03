@@ -1,56 +1,323 @@
-import tasksData from "@/services/mockData/tasks.json";
-import projectsData from "@/services/mockData/projects.json";
+import mockTasks from "../mockData/tasks.json";
+import { toast } from "react-toastify";
+import React from "react";
 
-// Normalize task status values to match TASK_STATUSES constants
-const normalizeStatus = (status) => {
-  const statusMap = {
-    'todo': 'To Do',
-    'in-progress': 'In Progress',
-    'review': 'Review',
-    'completed': 'Completed',
-    'cancelled': 'Cancelled'
-  }
-  return statusMap[status] || status
-}
+let tasks = [...mockTasks];
+let nextId = Math.max(...tasks.map(t => t.Id)) + 1;
+let nextCommentId = Math.max(...tasks.flatMap(t => t.comments?.map(c => c.id) || [])) + 1;
+let nextAttachmentId = Math.max(...tasks.flatMap(t => t.attachments?.map(a => a.id) || [])) + 1;
 
-let tasks = tasksData.map(task => ({
-  ...task,
-  status: normalizeStatus(task.status)
-}));
+// Simulate network delay
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Utility functions
-const delay = (ms = 200) => new Promise(resolve => setTimeout(resolve, ms));
-const getNextId = () => Math.max(...tasks.map(t => t.Id), 0) + 1;
+// Task management
+export const taskService = {
+  async getAll() {
+    await delay(300);
+    return tasks.map(task => ({ ...task }));
+  },
 
-// Task statuses
-export const TASK_STATUSES = {
-  TODO: 'To Do',
-  IN_PROGRESS: 'In Progress', 
-  REVIEW: 'Review',
-  COMPLETED: 'Completed',
-  CANCELLED: 'Cancelled'
-}
+  async getById(id) {
+    await delay(200);
+    const task = tasks.find(t => t.Id === parseInt(id));
+    return task ? { ...task } : null;
+  },
 
-// Task priorities  
-export const TASK_PRIORITIES = {
-  LOW: 'Low',
-  MEDIUM: 'Medium',
-  HIGH: 'High', 
-  URGENT: 'Urgent'
-}
+  async create(taskData) {
+    await delay(400);
+    const newTask = {
+      ...taskData,
+      Id: nextId++,
+      status: taskData.status || 'todo',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      estimatedHours: taskData.estimatedHours || 0,
+      actualHours: 0,
+      tags: taskData.tags || [],
+      attachments: [],
+      comments: []
+    };
+    tasks.push(newTask);
+    toast.success('Task created successfully!');
+    return { ...newTask };
+  },
 
-// Task types
-export const TASK_TYPES = {
-  DEVELOPMENT: 'Development',
-  DESIGN: 'Design',
-  TESTING: 'Testing',
-  BUG: 'Bug',
-  DOCUMENTATION: 'Documentation',
-  MEETING: 'Meeting',
-  OTHER: 'Other'
-}
+  async update(id, updates) {
+    await delay(350);
+    const index = tasks.findIndex(t => t.Id === parseInt(id));
+    if (index === -1) {
+      toast.error('Task not found');
+      return null;
+    }
+    
+    const updatedTask = {
+      ...tasks[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+      ...(updates.status === 'completed' && !tasks[index].completedAt ? {
+        completedAt: new Date().toISOString()
+      } : {})
+    };
+    
+    tasks[index] = updatedTask;
+    toast.success('Task updated successfully!');
+    return { ...updatedTask };
+  },
 
-const taskService = {
+  async delete(id) {
+    await delay(250);
+    const index = tasks.findIndex(t => t.Id === parseInt(id));
+    if (index === -1) {
+      toast.error('Task not found');
+      return false;
+    }
+    
+    tasks.splice(index, 1);
+    toast.success('Task deleted successfully!');
+    return true;
+  },
+
+  // Task filtering methods
+  async getOverdueTasks() {
+    await delay(300);
+    const today = new Date().toDateString();
+    return tasks
+      .filter(task => 
+        task.status !== 'completed' && 
+        task.dueDate && 
+        new Date(task.dueDate).toDateString() < today
+      )
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  },
+
+  async getTodayTasks() {
+    await delay(300);
+    const today = new Date().toDateString();
+    return tasks
+      .filter(task => 
+        task.dueDate && 
+        new Date(task.dueDate).toDateString() === today
+      )
+      .sort((a, b) => {
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+  },
+
+  async getThisWeekTasks() {
+    await delay(300);
+    const today = new Date();
+    const weekStart = new Date(today.setDate(today.getDate() - today.getDay()));
+    const weekEnd = new Date(today.setDate(today.getDate() - today.getDay() + 6));
+    
+    return tasks
+      .filter(task => {
+        if (!task.dueDate) return false;
+        const taskDate = new Date(task.dueDate);
+        return taskDate >= weekStart && taskDate <= weekEnd;
+      })
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  },
+
+  async getCompletedTasks() {
+    await delay(300);
+    return tasks
+      .filter(task => task.status === 'completed')
+      .sort((a, b) => new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt));
+  },
+
+  // Time tracking methods
+  async updateTimeTracking(id, timeData) {
+    await delay(200);
+    const task = tasks.find(t => t.Id === parseInt(id));
+    if (!task) {
+      toast.error('Task not found');
+      return null;
+    }
+
+    const updatedTask = {
+      ...task,
+      estimatedHours: timeData.estimatedHours ?? task.estimatedHours,
+      actualHours: timeData.actualHours ?? task.actualHours,
+      updatedAt: new Date().toISOString()
+    };
+
+    const index = tasks.findIndex(t => t.Id === parseInt(id));
+    tasks[index] = updatedTask;
+    
+    toast.success('Time tracking updated!');
+    return { ...updatedTask };
+  },
+
+  // Comment methods
+  async addComment(taskId, commentData) {
+    await delay(300);
+    const task = tasks.find(t => t.Id === parseInt(taskId));
+    if (!task) {
+      toast.error('Task not found');
+      return null;
+    }
+
+    const newComment = {
+      id: nextCommentId++,
+      author: commentData.author || 'Current User',
+      content: commentData.content,
+      createdAt: new Date().toISOString(),
+      parentId: commentData.parentId || null
+    };
+
+    if (!task.comments) task.comments = [];
+    task.comments.push(newComment);
+    
+    const index = tasks.findIndex(t => t.Id === parseInt(taskId));
+    tasks[index] = { ...task, updatedAt: new Date().toISOString() };
+    
+    toast.success('Comment added successfully!');
+    return { ...newComment };
+  },
+
+  async updateComment(taskId, commentId, updates) {
+    await delay(250);
+    const task = tasks.find(t => t.Id === parseInt(taskId));
+    if (!task || !task.comments) {
+      toast.error('Task or comment not found');
+      return null;
+    }
+
+    const commentIndex = task.comments.findIndex(c => c.id === parseInt(commentId));
+    if (commentIndex === -1) {
+      toast.error('Comment not found');
+      return null;
+    }
+
+    task.comments[commentIndex] = {
+      ...task.comments[commentIndex],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    const taskIndex = tasks.findIndex(t => t.Id === parseInt(taskId));
+    tasks[taskIndex] = { ...task, updatedAt: new Date().toISOString() };
+    
+    toast.success('Comment updated successfully!');
+    return { ...task.comments[commentIndex] };
+  },
+
+  async deleteComment(taskId, commentId) {
+    await delay(200);
+    const task = tasks.find(t => t.Id === parseInt(taskId));
+    if (!task || !task.comments) {
+      toast.error('Task or comment not found');
+      return false;
+    }
+
+    const commentIndex = task.comments.findIndex(c => c.id === parseInt(commentId));
+    if (commentIndex === -1) {
+      toast.error('Comment not found');
+      return false;
+    }
+
+    // Remove comment and its replies
+    task.comments = task.comments.filter(c => 
+      c.id !== parseInt(commentId) && c.parentId !== parseInt(commentId)
+    );
+
+    const taskIndex = tasks.findIndex(t => t.Id === parseInt(taskId));
+    tasks[taskIndex] = { ...task, updatedAt: new Date().toISOString() };
+    
+    toast.success('Comment deleted successfully!');
+    return true;
+  },
+
+  // Attachment methods
+  async addAttachment(taskId, attachmentData) {
+    await delay(500); // Simulate file upload delay
+    const task = tasks.find(t => t.Id === parseInt(taskId));
+    if (!task) {
+      toast.error('Task not found');
+      return null;
+    }
+
+    const newAttachment = {
+      id: nextAttachmentId++,
+      name: attachmentData.name,
+      size: attachmentData.size,
+      type: attachmentData.type,
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: attachmentData.uploadedBy || 'Current User',
+      url: attachmentData.url || `#attachment-${nextAttachmentId - 1}` // Mock URL
+    };
+
+    if (!task.attachments) task.attachments = [];
+    task.attachments.push(newAttachment);
+    
+    const index = tasks.findIndex(t => t.Id === parseInt(taskId));
+    tasks[index] = { ...task, updatedAt: new Date().toISOString() };
+    
+    toast.success(`File "${attachmentData.name}" uploaded successfully!`);
+    return { ...newAttachment };
+  },
+
+  async deleteAttachment(taskId, attachmentId) {
+    await delay(200);
+    const task = tasks.find(t => t.Id === parseInt(taskId));
+    if (!task || !task.attachments) {
+      toast.error('Task or attachment not found');
+      return false;
+    }
+
+    const attachmentIndex = task.attachments.findIndex(a => a.id === parseInt(attachmentId));
+    if (attachmentIndex === -1) {
+      toast.error('Attachment not found');
+      return false;
+    }
+
+    const attachmentName = task.attachments[attachmentIndex].name;
+    task.attachments.splice(attachmentIndex, 1);
+
+    const taskIndex = tasks.findIndex(t => t.Id === parseInt(taskId));
+    tasks[taskIndex] = { ...task, updatedAt: new Date().toISOString() };
+    
+    toast.success(`File "${attachmentName}" deleted successfully!`);
+    return true;
+  },
+
+  // Tag methods
+  async updateTags(taskId, tags) {
+    await delay(200);
+    const task = tasks.find(t => t.Id === parseInt(taskId));
+    if (!task) {
+      toast.error('Task not found');
+      return null;
+    }
+
+    const updatedTask = {
+      ...task,
+      tags: tags || [],
+      updatedAt: new Date().toISOString()
+    };
+
+    const index = tasks.findIndex(t => t.Id === parseInt(taskId));
+    tasks[index] = updatedTask;
+    
+    toast.success('Tags updated successfully!');
+    return { ...updatedTask };
+  },
+
+  // Get available tags across all tasks
+  async getAllTags() {
+    await delay(100);
+    const allTags = tasks.flatMap(task => task.tags || []);
+    const uniqueTags = allTags.reduce((acc, tag) => {
+      if (!acc.find(t => t.name === tag.name)) {
+        acc.push(tag);
+      }
+      return acc;
+    }, []);
+    
+return uniqueTags.sort((a, b) => a.name.localeCompare(b.name));
+  },
+
   // Get all tasks with optional filtering
   getAll(filters = {}) {
     return new Promise((resolve) => {
@@ -199,7 +466,7 @@ const taskService = {
             status: newStatus,
             updatedAt: new Date().toISOString()
           }
-          if (newStatus === TASK_STATUSES.COMPLETED) {
+if (newStatus === 'completed' || newStatus === 'Completed') {
             tasks[index].completedAt = new Date().toISOString()
           }
           resolve({ ...tasks[index] })
@@ -232,11 +499,13 @@ const taskService = {
           completed: 0
         }
 
-        Object.values(TASK_STATUSES).forEach(status => {
+const statuses = ['todo', 'in-progress', 'completed', 'cancelled'];
+        statuses.forEach(status => {
           stats.byStatus[status] = tasks.filter(t => t.status === status).length
         })
 
-        Object.values(TASK_PRIORITIES).forEach(priority => {
+        const priorities = ['low', 'medium', 'high', 'urgent'];
+        priorities.forEach(priority => {
           stats.byPriority[priority] = tasks.filter(t => t.priority === priority).length
         })
 
@@ -244,11 +513,10 @@ const taskService = {
         stats.overdue = tasks.filter(t => 
           t.dueDate && 
           new Date(t.dueDate) < today && 
-          t.status !== TASK_STATUSES.COMPLETED
+          t.status !== 'completed'
         ).length
 
-        stats.completed = tasks.filter(t => t.status === TASK_STATUSES.COMPLETED).length
-
+        stats.completed = tasks.filter(t => t.status === 'completed').length
         resolve(stats)
       }, 200)
     })
@@ -283,29 +551,34 @@ const taskService = {
         } else {
           reject(new Error('Task not found'))
         }
-      }, 200)
+}, 200)
     })
-},
-
-  // Subtask operations
-  async getSubtasks(parentId) {
-    await delay();
-    const allTasks = await this.getAll();
-    return allTasks.filter(task => task.parentTaskId === parentId);
   },
 
-  async createSubtask(parentId, subtaskData) {
-    await delay();
+  // Subtask operations
+async getSubtasks(parentId) {
+    if (!parentId) return [];
+    await delay(200);
+    const allTasks = await this.getAll();
+    return allTasks.filter(task => task.parentTaskId === parseInt(parentId));
+  },
+
+async createSubtask(parentId, subtaskData) {
+    if (!parentId || !subtaskData) {
+      throw new Error('Parent ID and subtask data are required');
+    }
+    await delay(200);
     const newSubtask = {
       ...subtaskData,
-      Id: getNextId(),
-      parentTaskId: parentId,
+      Id: nextId++,
+      parentTaskId: parseInt(parentId),
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       progress: 0,
       timeEntries: [],
-      activeTimer: null
+      activeTimer: null,
+      status: subtaskData.status || 'todo'
     };
-
     tasks.push(newSubtask);
     
     // Update parent task progress
@@ -314,9 +587,12 @@ const taskService = {
     return newSubtask;
   },
 
-  async updateSubtask(id, data) {
-    await delay();
-    const index = tasks.findIndex(task => task.Id === id);
+async updateSubtask(id, data) {
+    if (!id || !data) {
+      throw new Error('Task ID and update data are required');
+    }
+    await delay(200);
+    const index = tasks.findIndex(task => task.Id === parseInt(id));
     if (index === -1) {
       throw new Error('Subtask not found');
     }
@@ -331,9 +607,12 @@ const taskService = {
     return tasks[index];
   },
 
-  async deleteSubtask(id) {
-    await delay();
-    const taskIndex = tasks.findIndex(task => task.Id === id);
+async deleteSubtask(id) {
+    if (!id) {
+      throw new Error('Task ID is required');
+    }
+    await delay(200);
+    const taskIndex = tasks.findIndex(task => task.Id === parseInt(id));
     if (taskIndex === -1) {
       throw new Error('Subtask not found');
     }
@@ -349,9 +628,12 @@ const taskService = {
     return true;
   },
 
-  async convertSubtaskToMainTask(id) {
-    await delay();
-    const index = tasks.findIndex(task => task.Id === id);
+async convertSubtaskToMainTask(id) {
+    if (!id) {
+      throw new Error('Task ID is required');
+    }
+    await delay(200);
+    const index = tasks.findIndex(task => task.Id === parseInt(id));
     if (index === -1) {
       throw new Error('Subtask not found');
     }
@@ -368,27 +650,31 @@ const taskService = {
     return tasks[index];
   },
 
-  async updateTaskProgress(taskId) {
-    await delay();
+async updateTaskProgress(taskId) {
+    if (!taskId) return;
+    await delay(200);
     const subtasks = await this.getSubtasks(taskId);
-    if (subtasks.length === 0) return;
+    if (!subtasks || subtasks.length === 0) return;
 
-    const completedSubtasks = subtasks.filter(subtask => subtask.status === 'Completed').length;
+    const completedSubtasks = subtasks.filter(subtask => subtask.status === 'completed' || subtask.status === 'Completed').length;
     const progress = Math.round((completedSubtasks / subtasks.length) * 100);
 
-    const taskIndex = tasks.findIndex(task => task.Id === taskId);
+    const taskIndex = tasks.findIndex(task => task.Id === parseInt(taskId));
     if (taskIndex !== -1) {
       tasks[taskIndex].progress = progress;
       tasks[taskIndex].updatedAt = new Date().toISOString();
     }
   },
 
-  async reorderSubtasks(parentId, subtaskIds) {
-    await delay();
-    const subtasks = tasks.filter(task => task.parentTaskId === parentId);
+async reorderSubtasks(parentId, subtaskIds) {
+    if (!parentId || !Array.isArray(subtaskIds)) {
+      throw new Error('Parent ID and subtask IDs array are required');
+    }
+    await delay(200);
+    const subtasks = tasks.filter(task => task.parentTaskId === parseInt(parentId));
     
     subtaskIds.forEach((id, index) => {
-      const taskIndex = tasks.findIndex(task => task.Id === id);
+      const taskIndex = tasks.findIndex(task => task.Id === parseInt(id));
       if (taskIndex !== -1) {
         tasks[taskIndex].order = index;
         tasks[taskIndex].updatedAt = new Date().toISOString();
@@ -399,9 +685,12 @@ const taskService = {
   },
 
   // Time tracking operations
-  async startTimer(taskId) {
-    await delay();
-    const index = tasks.findIndex(task => task.Id === taskId);
+async startTimer(taskId) {
+    if (!taskId) {
+      throw new Error('Task ID is required');
+    }
+    await delay(200);
+    const index = tasks.findIndex(task => task.Id === parseInt(taskId));
     if (index === -1) {
       throw new Error('Task not found');
     }
@@ -410,6 +699,7 @@ const taskService = {
     tasks.forEach(task => {
       if (task.activeTimer) {
         task.activeTimer = null;
+        task.updatedAt = new Date().toISOString();
       }
     });
 
@@ -422,9 +712,12 @@ const taskService = {
     return tasks[index];
   },
 
-  async stopTimer(taskId, description = '') {
-    await delay();
-    const index = tasks.findIndex(task => task.Id === taskId);
+async stopTimer(taskId, description = '') {
+    if (!taskId) {
+      throw new Error('Task ID is required');
+    }
+    await delay(200);
+    const index = tasks.findIndex(task => task.Id === parseInt(taskId));
     if (index === -1) {
       throw new Error('Task not found');
     }
@@ -463,9 +756,12 @@ const taskService = {
     return tasks[index];
   },
 
-  async addTimeEntry(taskId, timeEntry) {
-    await delay();
-    const index = tasks.findIndex(task => task.Id === taskId);
+async addTimeEntry(taskId, timeEntry) {
+    if (!taskId || !timeEntry) {
+      throw new Error('Task ID and time entry data are required');
+    }
+    await delay(200);
+    const index = tasks.findIndex(task => task.Id === parseInt(taskId));
     if (index === -1) {
       throw new Error('Task not found');
     }
@@ -491,18 +787,24 @@ const taskService = {
     return tasks[index];
   },
 
-  async getTimeEntries(taskId) {
-    await delay();
-    const task = tasks.find(task => task.Id === taskId);
+async getTimeEntries(taskId) {
+    if (!taskId) {
+      throw new Error('Task ID is required');
+    }
+    await delay(200);
+    const task = tasks.find(task => task.Id === parseInt(taskId));
     if (!task) {
       throw new Error('Task not found');
     }
     return task.timeEntries || [];
   },
 
-  async deleteTimeEntry(taskId, entryId) {
-    await delay();
-    const index = tasks.findIndex(task => task.Id === taskId);
+async deleteTimeEntry(taskId, entryId) {
+    if (!taskId || !entryId) {
+      throw new Error('Task ID and entry ID are required');
+    }
+    await delay(200);
+    const index = tasks.findIndex(task => task.Id === parseInt(taskId));
     if (index === -1) {
       throw new Error('Task not found');
     }
@@ -523,9 +825,12 @@ const taskService = {
   },
 
   // Tag management
-  async addTag(taskId, tag) {
-    await delay();
-    const index = tasks.findIndex(task => task.Id === taskId);
+async addTag(taskId, tag) {
+    if (!taskId || !tag) {
+      throw new Error('Task ID and tag are required');
+    }
+    await delay(200);
+    const index = tasks.findIndex(task => task.Id === parseInt(taskId));
     if (index === -1) {
       throw new Error('Task not found');
     }
@@ -543,9 +848,12 @@ const taskService = {
     return tasks[index];
   },
 
-  async removeTag(taskId, tag) {
-    await delay();
-    const index = tasks.findIndex(task => task.Id === taskId);
+async removeTag(taskId, tag) {
+    if (!taskId || !tag) {
+      throw new Error('Task ID and tag are required');
+    }
+    await delay(200);
+    const index = tasks.findIndex(task => task.Id === parseInt(taskId));
     if (index === -1) {
       throw new Error('Task not found');
     }
@@ -560,40 +868,54 @@ const taskService = {
   },
 
   // Filtering operations
-  async getMyTasks(assignee) {
-    await delay();
+async getMyTasks(assignee) {
+    if (!assignee) {
+      throw new Error('Assignee is required');
+    }
+    await delay(200);
     const allTasks = await this.getAll();
     return allTasks.filter(task => task.assignee === assignee);
   },
 
-  async getTeamTasks() {
-    await delay();
+async getTeamTasks() {
+    await delay(200);
     return await this.getAll();
   },
 
-  async getProjectTasks(projectId) {
-    await delay();
+async getProjectTasks(projectId) {
+    if (!projectId) {
+      throw new Error('Project ID is required');
+    }
+    await delay(200);
     const allTasks = await this.getAll();
-    return allTasks.filter(task => task.projectId === projectId);
+    return allTasks.filter(task => task.projectId === parseInt(projectId));
   },
 
-  async getTasksByTags(tags) {
-    await delay();
+async getTasksByTags(tags) {
+    if (!Array.isArray(tags) || tags.length === 0) {
+      throw new Error('Tags array is required');
+    }
+    await delay(200);
     const allTasks = await this.getAll();
     return allTasks.filter(task => 
-      task.tags && tags.some(tag => task.tags.includes(tag))
+      task.tags && Array.isArray(task.tags) && tags.some(tag => task.tags.includes(tag))
     );
   },
 
   // Bulk operations
-  async bulkUpdateSubtasks(parentId, updates) {
-    await delay();
-    const subtasks = tasks.filter(task => task.parentTaskId === parentId);
+async bulkUpdateSubtasks(parentId, updates) {
+    if (!parentId || !Array.isArray(updates)) {
+      throw new Error('Parent ID and updates array are required');
+    }
+    await delay(200);
+    const subtasks = tasks.filter(task => task.parentTaskId === parseInt(parentId));
     
     updates.forEach(update => {
-      const index = tasks.findIndex(task => task.Id === update.id);
-      if (index !== -1) {
-        tasks[index] = { ...tasks[index], ...update.data, updatedAt: new Date().toISOString() };
+      if (update && update.id) {
+        const index = tasks.findIndex(task => task.Id === parseInt(update.id));
+        if (index !== -1) {
+          tasks[index] = { ...tasks[index], ...update.data, updatedAt: new Date().toISOString() };
+        }
       }
     });
 
@@ -604,14 +926,20 @@ const taskService = {
   },
 
   async bulkCompleteSubtasks(parentId, subtaskIds) {
-    await delay();
+    if (!parentId || !Array.isArray(subtaskIds)) {
+      throw new Error('Parent ID and subtask IDs array are required');
+    }
+    await delay(200);
     subtaskIds.forEach(id => {
-      const index = tasks.findIndex(task => task.Id === id);
+      const index = tasks.findIndex(task => task.Id === parseInt(id));
       if (index !== -1) {
-        tasks[index].status = 'Completed';
+        tasks[index].status = 'completed';
         tasks[index].updatedAt = new Date().toISOString();
+        if (!tasks[index].completedAt) {
+          tasks[index].completedAt = new Date().toISOString();
+        }
       }
-    });
+});
 
     // Update parent progress
     await this.updateTaskProgress(parentId);
@@ -621,8 +949,8 @@ const taskService = {
 
   // Get active timer across all tasks
   async getActiveTimer() {
-    await delay();
-    return tasks.find(task => task.activeTimer);
+    await delay(200);
+    return tasks.find(task => task.activeTimer) || null;
   }
 }
 

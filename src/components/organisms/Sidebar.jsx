@@ -1,8 +1,13 @@
-import { useState } from "react"
-import { NavLink, useLocation } from "react-router-dom"
-import { motion, AnimatePresence } from "framer-motion"
-import ApperIcon from "@/components/ApperIcon"
-import { cn } from "@/utils/cn"
+import React, { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import ApperIcon from "@/components/ApperIcon";
+import Tasks from "@/components/pages/Tasks";
+import Dashboard from "@/components/pages/Dashboard";
+import Expenses from "@/components/pages/Expenses";
+import Clients from "@/components/pages/Clients";
+import Projects from "@/components/pages/Projects";
+import { cn } from "@/utils/cn";
 
 const Sidebar = ({ isOpen, onToggle }) => {
   const location = useLocation()
@@ -14,36 +19,30 @@ const navigationItems = [
       icon: "LayoutDashboard"
     },
     {
-      name: "Clients",
-      href: "/clients",
-      icon: "Users"
+      name: "Tasks",
+      href: "/tasks",
+      icon: "CheckSquare"
     },
     {
       name: "Projects",
       href: "/projects",
       icon: "Folder"
     },
-{
-      name: "Tasks",
-      href: "/tasks",
-      icon: "CheckSquare"
-    },
     {
-      name: "Time Tracking",
-      href: "/time-tracking",
-      icon: "Clock",
-      comingSoon: true
-    },
-    {
-      name: "Invoices & Billing",
-      href: "/invoices",
-      icon: "FileText",
-      comingSoon: true
+      name: "Clients",
+      href: "/clients",
+      icon: "Users"
     },
     {
       name: "Expenses",
       href: "/expenses",
       icon: "Receipt"
+    },
+    {
+      name: "Documents",
+      href: "/coming-soon",
+      icon: "FileText",
+      comingSoon: true
     },
     {
       name: "Reports",
