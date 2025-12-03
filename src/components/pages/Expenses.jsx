@@ -103,10 +103,18 @@ const Expenses = () => {
           <p className="text-slate-600 dark:text-slate-400 mt-2">
             Track and manage all your business expenses
           </p>
-        </div>
-<div className="flex gap-3">
+</div>
+        <div className="flex gap-3">
           <Button onClick={handleAddExpense} icon="Plus">
             Add Expense
+          </Button>
+          <Button 
+            variant="ghost" 
+            onClick={() => window.location.href = '/tax-reports'} 
+            icon="FileText"
+            className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+          >
+            Tax Report
           </Button>
           <Button 
             variant="ghost" 

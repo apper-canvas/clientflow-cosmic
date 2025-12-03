@@ -86,7 +86,7 @@ const mainRoutes = [
     element: <Suspense fallback={<LoadingFallback />}><Expenses /></Suspense>
   },
 {
-    path: "employee-expense-reports",
+    path: "tax-reports", 
     element: <Suspense fallback={<LoadingFallback />}><ExpenseReports /></Suspense>
   },
   {

@@ -337,7 +337,7 @@ async getByCategory(category) {
       grouped[projectId].count += 1
     })
 
-    return Object.values(grouped).sort((a, b) => b.amount - a.amount)
+return Object.values(grouped).sort((a, b) => b.amount - a.amount)
   },
 
   getBillableBreakdown(expenseList) {
@@ -366,6 +366,87 @@ async getByCategory(category) {
     })
 
     return Object.values(statusMap).filter(item => item.count > 0)
+  },
+
+  getTaxReport(filters = {}) {
+    const expenses = this.getAllExpenses()
+    let filteredExpenses = expenses
+
+    // Apply date range filter if provided
+    if (filters.startDate) {
+      filteredExpenses = filteredExpenses.filter(expense => 
+        new Date(expense.date) >= new Date(filters.startDate)
+      )
+    }
+    if (filters.endDate) {
+      filteredExpenses = filteredExpenses.filter(expense => 
+        new Date(expense.date) <= new Date(filters.endDate)
+      )
+    }
+
+    // Apply category filter if provided
+    if (filters.category) {
+      filteredExpenses = filteredExpenses.filter(expense => expense.category === filters.category)
+    }
+
+    // Apply client filter if provided
+    if (filters.clientId) {
+      filteredExpenses = filteredExpenses.filter(expense => expense.clientId === parseInt(filters.clientId))
+    }
+
+    // Determine tax-deductible expenses based on category and business context
+    const taxDeductibleCategories = ['office', 'travel', 'software', 'equipment', 'meals', 'marketing']
+    const expensesWithTaxStatus = filteredExpenses.map(expense => ({
+      ...expense,
+      taxDeductible: taxDeductibleCategories.includes(expense.category) && expense.status !== 'rejected'
+    }))
+
+    const deductibleExpenses = expensesWithTaxStatus.filter(e => e.taxDeductible)
+    const nonDeductibleExpenses = expensesWithTaxStatus.filter(e => !e.taxDeductible)
+
+    // Tax category breakdown
+    const taxCategoryBreakdown = {}
+    expensesWithTaxStatus.forEach(expense => {
+      if (!taxCategoryBreakdown[expense.category]) {
+        taxCategoryBreakdown[expense.category] = {
+          deductible: 0,
+          nonDeductible: 0,
+          total: 0,
+          count: 0
+        }
+      }
+      
+      taxCategoryBreakdown[expense.category].total += expense.amount
+      taxCategoryBreakdown[expense.category].count += 1
+      
+      if (expense.taxDeductible) {
+        taxCategoryBreakdown[expense.category].deductible += expense.amount
+      } else {
+        taxCategoryBreakdown[expense.category].nonDeductible += expense.amount
+      }
+    })
+
+    // Receipt documentation status
+    const receiptStatus = {
+      documented: expensesWithTaxStatus.filter(e => e.receiptUrl).length,
+      missing: expensesWithTaxStatus.filter(e => !e.receiptUrl).length,
+      deductibleWithReceipts: deductibleExpenses.filter(e => e.receiptUrl).length,
+      deductibleWithoutReceipts: deductibleExpenses.filter(e => !e.receiptUrl).length
+    }
+
+    return {
+      totalExpenses: filteredExpenses.length,
+      totalAmount: filteredExpenses.reduce((sum, e) => sum + e.amount, 0),
+      deductibleAmount: deductibleExpenses.reduce((sum, e) => sum + e.amount, 0),
+      nonDeductibleAmount: nonDeductibleExpenses.reduce((sum, e) => sum + e.amount, 0),
+      deductibleCount: deductibleExpenses.length,
+      nonDeductibleCount: nonDeductibleExpenses.length,
+      taxCategoryBreakdown,
+      receiptStatus,
+      expenses: expensesWithTaxStatus,
+      deductibleExpenses,
+      nonDeductibleExpenses
+    }
   }
 }
 
