@@ -1,9 +1,10 @@
-import clientsData from '@/services/mockData/clients.json'
-import projectsData from '@/services/mockData/projects.json'
-import invoicesData from '@/services/mockData/invoices.json'
-import expensesData from '@/services/mockData/expenses.json'
-import activitiesData from '@/services/mockData/activities.json'
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInDays } from 'date-fns'
+import clientsData from "@/services/mockData/clients.json";
+import projectsData from "@/services/mockData/projects.json";
+import invoicesData from "@/services/mockData/invoices.json";
+import expensesData from "@/services/mockData/expenses.json";
+import activitiesData from "@/services/mockData/activities.json";
+import { differenceInDays, endOfMonth, format, isWithinInterval, parseISO, startOfMonth, subMonths } from "date-fns";
+import React from "react";
 
 // Utility functions
 function delay(ms) {
@@ -202,8 +203,8 @@ const reportsService = {
     
     return upcomingProjects.slice(0, 10)
   },
-// Financial reports data
-  async getFinancialSummary(dateRange) {
+// Profit & Loss Report
+  async getProfitLossReport(dateRange) {
     await delay(600)
     
     const { startDate, endDate } = dateRange
@@ -220,11 +221,27 @@ const reportsService = {
     const grossProfit = totalRevenue - totalExpenses
     const profitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0
     
+    // Import projects data for breakdown
+    const { default: projectsData } = await import('@/services/mockData/projects.json')
+    
+    // Revenue vs Expenses chart data (monthly)
+    const revenueVsExpensesChart = this.generateRevenueVsExpensesChart(periodInvoices, periodExpenses, startDate, endDate)
+    
+    // Breakdown by project
+    const projectBreakdown = this.getProjectProfitBreakdown(periodInvoices, periodExpenses, projectsData)
+    
+    // Breakdown by category
+    const categoryBreakdown = this.getCategoryProfitBreakdown(periodExpenses)
+    
     return {
       totalRevenue,
       totalExpenses,
       grossProfit,
       profitMargin,
+      netProfitMargin: profitMargin, // Same as gross for now
+      revenueVsExpensesChart,
+      projectBreakdown,
+      categoryBreakdown,
       invoiceBreakdown: {
         paid: periodInvoices.filter(inv => inv.status === 'paid').length,
         pending: periodInvoices.filter(inv => ['sent', 'viewed'].includes(inv.status)).length,
@@ -234,7 +251,231 @@ const reportsService = {
     }
   },
 
+  // Generate Revenue vs Expenses Chart Data
+  generateRevenueVsExpensesChart(invoices, expenses, startDate, endDate) {
+    const months = []
+    const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
+    const end = new Date(endDate.getFullYear(), endDate.getMonth(), 1)
+    
+    while (current <= end) {
+      months.push(new Date(current))
+      current.setMonth(current.getMonth() + 1)
+    }
+    
+    const chartData = months.map(month => {
+      const monthStart = startOfMonth(month)
+      const monthEnd = endOfMonth(month)
+      
+      const monthlyRevenue = invoices
+        .filter(inv => inv.status === 'paid' && new Date(inv.issueDate) >= monthStart && new Date(inv.issueDate) <= monthEnd)
+        .reduce((sum, inv) => sum + inv.amount, 0)
+      
+      const monthlyExpenses = expenses
+        .filter(exp => new Date(exp.date) >= monthStart && new Date(exp.date) <= monthEnd)
+        .reduce((sum, exp) => sum + exp.amount, 0)
+      
+      return {
+        period: format(month, 'MMM yyyy'),
+        revenue: monthlyRevenue,
+        expenses: monthlyExpenses,
+        profit: monthlyRevenue - monthlyExpenses
+      }
+    })
+    
+    return chartData
+  },
+
+  // Project Profit Breakdown
+  getProjectProfitBreakdown(invoices, expenses, projectsData) {
+    const paidInvoices = invoices.filter(inv => inv.status === 'paid')
+    
+    const projectRevenue = {}
+    const projectExpenses = {}
+    
+    // Calculate revenue by project
+    paidInvoices.forEach(invoice => {
+      if (invoice.projectId) {
+        projectRevenue[invoice.projectId] = (projectRevenue[invoice.projectId] || 0) + invoice.amount
+      }
+    })
+    
+    // Calculate expenses by project
+    expenses.forEach(expense => {
+      if (expense.projectId) {
+        projectExpenses[expense.projectId] = (projectExpenses[expense.projectId] || 0) + expense.amount
+      }
+    })
+    
+    // Combine all project IDs
+    const allProjectIds = new Set([...Object.keys(projectRevenue), ...Object.keys(projectExpenses)])
+    
+    return Array.from(allProjectIds)
+      .map(projectId => {
+        const id = parseInt(projectId)
+        const project = projectsData.find(p => p.Id === id)
+        const revenue = projectRevenue[projectId] || 0
+        const expenses = projectExpenses[projectId] || 0
+        const profit = revenue - expenses
+        const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+        
+        return {
+          projectId: id,
+          projectName: project ? project.name : 'Unknown Project',
+          revenue,
+          expenses,
+          profit,
+          margin
+        }
+      })
+      .sort((a, b) => b.profit - a.profit)
+  },
+
+  // Category Profit Breakdown
+  getCategoryProfitBreakdown(expenses) {
+    const categoryExpenses = {}
+    
+    expenses.forEach(expense => {
+      const category = expense.category || 'Uncategorized'
+      categoryExpenses[category] = (categoryExpenses[category] || 0) + expense.amount
+    })
+    
+    return Object.entries(categoryExpenses)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        percentage: expenses.length > 0 ? (amount / expenses.reduce((sum, exp) => sum + exp.amount, 0)) * 100 : 0
+      }))
+      .sort((a, b) => b.amount - a.amount)
+  },
+
   // Revenue Analysis
+// Monthly Comparison for P&L
+  async getMonthlyComparison(dateRange) {
+    await delay(700)
+    
+    const { startDate, endDate } = dateRange
+    const periodInvoices = filterByDateRange(invoicesData, startDate, endDate, 'issueDate')
+    const periodExpenses = filterByDateRange(expensesData, startDate, endDate, 'date')
+    
+    const months = []
+    const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
+    const end = new Date(endDate.getFullYear(), endDate.getMonth(), 1)
+    
+    while (current <= end) {
+      months.push(new Date(current))
+      current.setMonth(current.getMonth() + 1)
+    }
+    
+    const monthlyData = months.map(month => {
+      const monthStart = startOfMonth(month)
+      const monthEnd = endOfMonth(month)
+      
+      const monthInvoices = periodInvoices.filter(inv => 
+        new Date(inv.issueDate) >= monthStart && new Date(inv.issueDate) <= monthEnd
+      )
+      const monthExpenses = periodExpenses.filter(exp => 
+        new Date(exp.date) >= monthStart && new Date(exp.date) <= monthEnd
+      )
+      
+      const revenue = monthInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0)
+      const expenses = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0)
+      const profit = revenue - expenses
+      const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+      
+      return {
+        period: format(month, 'MMM yyyy'),
+        month: format(month, 'MMM'),
+        year: month.getFullYear(),
+        revenue,
+        expenses,
+        profit,
+        margin,
+        invoiceCount: monthInvoices.filter(inv => inv.status === 'paid').length,
+        expenseCount: monthExpenses.length
+      }
+    })
+    
+    // Calculate trends
+    const currentMonth = monthlyData[monthlyData.length - 1] || {}
+    const previousMonth = monthlyData[monthlyData.length - 2] || {}
+    
+    const revenueTrend = previousMonth.revenue ? ((currentMonth.revenue - previousMonth.revenue) / previousMonth.revenue) * 100 : 0
+    const expenseTrend = previousMonth.expenses ? ((currentMonth.expenses - previousMonth.expenses) / previousMonth.expenses) * 100 : 0
+    const profitTrend = previousMonth.profit ? ((currentMonth.profit - previousMonth.profit) / Math.abs(previousMonth.profit)) * 100 : 0
+    
+    return {
+      monthlyData,
+      trends: {
+        revenue: revenueTrend,
+        expenses: expenseTrend,
+        profit: profitTrend
+      },
+      totals: {
+        revenue: monthlyData.reduce((sum, month) => sum + month.revenue, 0),
+        expenses: monthlyData.reduce((sum, month) => sum + month.expenses, 0),
+        profit: monthlyData.reduce((sum, month) => sum + month.profit, 0)
+      }
+    }
+  },
+
+  // Year-to-Date Summary
+  async getYearToDateSummary() {
+    await delay(500)
+    
+    const currentYear = new Date().getFullYear()
+    const ytdStart = new Date(currentYear, 0, 1)
+    const ytdEnd = new Date()
+    
+    const ytdInvoices = filterByDateRange(invoicesData, ytdStart, ytdEnd, 'issueDate')
+    const ytdExpenses = filterByDateRange(expensesData, ytdStart, ytdEnd, 'date')
+    
+    const ytdRevenue = ytdInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0)
+    const ytdExpenseTotal = ytdExpenses.reduce((sum, exp) => sum + exp.amount, 0)
+    const ytdProfit = ytdRevenue - ytdExpenseTotal
+    const ytdMargin = ytdRevenue > 0 ? (ytdProfit / ytdRevenue) * 100 : 0
+    
+    // Previous year comparison
+    const prevYearStart = new Date(currentYear - 1, 0, 1)
+    const prevYearEnd = new Date(currentYear - 1, ytdEnd.getMonth(), ytdEnd.getDate())
+    
+    const prevYearInvoices = filterByDateRange(invoicesData, prevYearStart, prevYearEnd, 'issueDate')
+    const prevYearExpenses = filterByDateRange(expensesData, prevYearStart, prevYearEnd, 'date')
+    
+    const prevYearRevenue = prevYearInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0)
+    const prevYearExpenseTotal = prevYearExpenses.reduce((sum, exp) => sum + exp.amount, 0)
+    const prevYearProfit = prevYearRevenue - prevYearExpenseTotal
+    
+    const revenueGrowth = prevYearRevenue > 0 ? ((ytdRevenue - prevYearRevenue) / prevYearRevenue) * 100 : 0
+    const expenseGrowth = prevYearExpenseTotal > 0 ? ((ytdExpenseTotal - prevYearExpenseTotal) / prevYearExpenseTotal) * 100 : 0
+    const profitGrowth = prevYearProfit !== 0 ? ((ytdProfit - prevYearProfit) / Math.abs(prevYearProfit)) * 100 : 0
+    
+    return {
+      currentYear: {
+        revenue: ytdRevenue,
+        expenses: ytdExpenseTotal,
+        profit: ytdProfit,
+        margin: ytdMargin
+      },
+      previousYear: {
+        revenue: prevYearRevenue,
+        expenses: prevYearExpenseTotal,
+        profit: prevYearProfit,
+        margin: prevYearRevenue > 0 ? (prevYearProfit / prevYearRevenue) * 100 : 0
+      },
+      growth: {
+        revenue: revenueGrowth,
+        expenses: expenseGrowth,
+        profit: profitGrowth
+      },
+      averageMonthly: {
+        revenue: ytdRevenue / (ytdEnd.getMonth() + 1),
+        expenses: ytdExpenseTotal / (ytdEnd.getMonth() + 1),
+        profit: ytdProfit / (ytdEnd.getMonth() + 1)
+      }
+    }
+  },
+
+  // Revenue Analysis (kept for compatibility)
   async getRevenueAnalysis(dateRange, period = 'monthly') {
     await delay(800)
     
@@ -371,9 +612,9 @@ const reportsService = {
       confidenceLevel: Math.max(50, 90 - (Math.abs(growthRate) * 100))
     }
   },
+},
 
-  // Helper method to group revenue by period
-  groupRevenueByPeriod(invoices, period, startDate, endDate) {
+  // Helper method for grouping revenue by period
     const periods = []
     const start = new Date(startDate)
     const end = new Date(endDate)

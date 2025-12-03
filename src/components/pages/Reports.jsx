@@ -21,8 +21,10 @@ const Reports = () => {
     startDate: format(startOfMonth(subMonths(new Date(), 5)), 'yyyy-MM-dd'),
     endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd')
   })
-  const [dashboardData, setDashboardData] = useState(null)
-  const [financialData, setFinancialData] = useState(null)
+const [dashboardData, setDashboardData] = useState(null)
+  const [profitLossData, setProfitLossData] = useState(null)
+  const [monthlyComparisonData, setMonthlyComparisonData] = useState(null)
+  const [ytdSummaryData, setYtdSummaryData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -38,12 +40,23 @@ const Reports = () => {
       if (activeTab === 'overview') {
         const data = await reportsService.getOverviewDashboard(dateRange)
         setDashboardData(data)
-      } else if (activeTab === 'financial') {
-        const data = await reportsService.getFinancialSummary({
-          startDate: new Date(dateRange.startDate),
-          endDate: new Date(dateRange.endDate)
-        })
-        setFinancialData(data)
+} else if (activeTab === 'financial') {
+        // Load Profit & Loss data
+        const [profitLoss, monthlyComparison, ytdSummary] = await Promise.all([
+          reportsService.getProfitLossReport({
+            startDate: new Date(dateRange.startDate),
+            endDate: new Date(dateRange.endDate)
+          }),
+          reportsService.getMonthlyComparison({
+            startDate: new Date(dateRange.startDate),
+            endDate: new Date(dateRange.endDate)
+          }),
+          reportsService.getYearToDateSummary()
+        ])
+        
+        setProfitLossData(profitLoss)
+        setMonthlyComparisonData(monthlyComparison)
+        setYtdSummaryData(ytdSummary)
       }
     } catch (err) {
       setError('Failed to load report data')
@@ -308,9 +321,9 @@ const getTopClientsOptions = (data) => ({
     }
   }, [activeTab, dateRange, revenuePeriod])
 
-  const reportTabs = [
+const reportTabs = [
     { id: 'overview', label: 'Overview Dashboard', icon: 'BarChart3' },
-    { id: 'financial', label: 'Financial Reports', icon: 'DollarSign' },
+    { id: 'financial', label: 'Profit & Loss Report', icon: 'DollarSign' },
     { id: 'projects', label: 'Project Analytics', icon: 'Folder' },
     { id: 'team', label: 'Team Performance', icon: 'Users' },
     { id: 'clients', label: 'Client Insights', icon: 'Building' }
@@ -537,167 +550,196 @@ options={getRevenueChartOptions(dashboardData.revenueChart)}
             </div>
           </div>
         )}
-{/* Financial Reports Tab */}
+{/* Profit & Loss Report Tab */}
         {activeTab === 'financial' && (
           <div className="space-y-8">
-            {/* Revenue Reports Section */}
-            {revenueData && (
+            {/* P&L Data Loading */}
+            {profitLossData && (
               <>
-                {/* Revenue Metrics */}
+                {/* Main P&L Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <MetricCard
                     title="Total Revenue"
-                    value={formatCurrency(revenueData.totalRevenue)}
+                    value={formatCurrency(profitLossData.totalRevenue)}
                     icon="DollarSign"
                     className="bg-gradient-to-br from-success-50 to-success-100 dark:from-success-900/20 dark:to-success-800/20"
                   />
                   <MetricCard
-                    title="Total Invoiced"
-                    value={formatCurrency(revenueData.totalInvoiced)}
-                    icon="FileText"
+                    title="Total Expenses"
+                    value={formatCurrency(profitLossData.totalExpenses)}
+                    icon="Receipt"
+                    className="bg-gradient-to-br from-error-50 to-error-100 dark:from-error-900/20 dark:to-error-800/20"
+                  />
+                  <MetricCard
+                    title="Gross Profit"
+                    value={formatCurrency(profitLossData.grossProfit)}
+                    icon="TrendingUp"
                     className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20"
                   />
                   <MetricCard
-                    title="Outstanding"
-                    value={formatCurrency(revenueData.outstanding)}
-                    icon="AlertCircle"
-                    className="bg-gradient-to-br from-warning-50 to-warning-100 dark:from-warning-900/20 dark:to-warning-800/20"
-                  />
-                  <MetricCard
-                    title="Collection Rate"
-                    value={`${revenueData.collectionRate.toFixed(1)}%`}
-                    icon="TrendingUp"
+                    title="Profit Margin"
+                    value={`${profitLossData.profitMargin.toFixed(1)}%`}
+                    icon="Percent"
                     className="bg-gradient-to-br from-accent-50 to-accent-100 dark:from-accent-900/20 dark:to-accent-800/20"
                   />
                 </div>
 
-                {/* Revenue Trend Chart */}
+                {/* Revenue vs Expenses Chart */}
                 <ReportCard
-                  title="Revenue Trend Analysis"
-                  icon="TrendingUp"
+                  title="Revenue vs Expenses Analysis"
+                  icon="BarChart3"
                   className="col-span-full"
                 >
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex items-center gap-2">
-                        <Label className="text-sm font-medium">Period:</Label>
-                        <Select
-                          value={revenuePeriod}
-                          onValueChange={handleRevenuePeriodChange}
-                          className="w-32"
-                        >
-                          <option value="daily">Daily</option>
-                          <option value="weekly">Weekly</option>
-                          <option value="monthly">Monthly</option>
-                          <option value="yearly">Yearly</option>
-                        </Select>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Monthly comparison showing revenue, expenses, and profit trends</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleExportRevenue('csv')}
+                          onClick={() => handleExport('csv')}
                           className="flex items-center gap-2"
                         >
                           <ApperIcon name="Download" size={16} />
-                          CSV
+                          Export CSV
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleExportRevenue('pdf')}
+                          onClick={() => handleExport('pdf')}
                           className="flex items-center gap-2"
                         >
                           <ApperIcon name="FileText" size={16} />
-                          PDF
+                          Export PDF
                         </Button>
                       </div>
                     </div>
-                    {revenueData.trendData && (
+                    {profitLossData.revenueVsExpensesChart && (
                       <Chart
-                        options={getRevenueChartOptions(revenueData.trendData)}
-                        series={[{
-                          name: 'Revenue',
-                          data: revenueData.trendData.map(item => item.value)
-                        }]}
-                        type="area"
-                        height={350}
+                        options={{
+                          chart: {
+                            type: 'bar',
+                            toolbar: { show: false },
+                            stacked: false
+                          },
+                          colors: ['#10B981', '#EF4444', '#2C3E85'],
+                          plotOptions: {
+                            bar: {
+                              borderRadius: 4,
+                              dataLabels: {
+                                position: 'top'
+                              }
+                            }
+                          },
+                          dataLabels: {
+                            enabled: false
+                          },
+                          stroke: {
+                            show: true,
+                            width: 2,
+                            colors: ['transparent']
+                          },
+                          xaxis: {
+                            categories: profitLossData.revenueVsExpensesChart.map(item => item.period),
+                            labels: {
+                              style: {
+                                colors: '#64748b',
+                                fontSize: '12px'
+                              }
+                            }
+                          },
+                          yaxis: {
+                            labels: {
+                              style: {
+                                colors: '#64748b',
+                                fontSize: '12px'
+                              },
+                              formatter: (value) => formatCurrency(value)
+                            }
+                          },
+                          tooltip: {
+                            y: {
+                              formatter: (value) => formatCurrency(value)
+                            }
+                          },
+                          legend: {
+                            position: 'top',
+                            horizontalAlign: 'center'
+                          },
+                          grid: {
+                            borderColor: '#e2e8f0',
+                            strokeDashArray: 4
+                          }
+                        }}
+                        series={[
+                          {
+                            name: 'Revenue',
+                            data: profitLossData.revenueVsExpensesChart.map(item => item.revenue)
+                          },
+                          {
+                            name: 'Expenses',
+                            data: profitLossData.revenueVsExpensesChart.map(item => item.expenses)
+                          },
+                          {
+                            name: 'Profit',
+                            data: profitLossData.revenueVsExpensesChart.map(item => item.profit)
+                          }
+                        ]}
+                        type="bar"
+                        height={400}
                       />
                     )}
                   </div>
                 </ReportCard>
 
-                {/* Additional Revenue Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <MetricCard
-                    title="Average Invoice Value"
-                    value={formatCurrency(revenueData.averageInvoiceValue)}
-                    icon="Calculator"
-                    className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
-                  />
-                  <MetricCard
-                    title="Total Invoices"
-                    value={revenueData.invoiceCount.total.toString()}
-                    icon="Receipt"
-                    className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20"
-                  />
-                </div>
-
-                {/* Revenue Breakdown */}
-                <ReportCard
-                  title="Revenue Breakdown"
-                  icon="PieChart"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-4 rounded-lg bg-success-50 dark:bg-success-900/20">
-                      <div className="text-2xl font-bold text-success-600 dark:text-success-400">
-                        {formatCurrency(revenueData.revenueBreakdown.paid)}
-                      </div>
-                      <div className="text-sm text-success-700 dark:text-success-300">Paid Revenue</div>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-primary-50 dark:bg-primary-900/20">
-                      <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                        {formatCurrency(revenueData.revenueBreakdown.invoiced)}
-                      </div>
-                      <div className="text-sm text-primary-700 dark:text-primary-300">Total Invoiced</div>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-warning-50 dark:bg-warning-900/20">
-                      <div className="text-2xl font-bold text-warning-600 dark:text-warning-400">
-                        {formatCurrency(revenueData.revenueBreakdown.outstanding)}
-                      </div>
-                      <div className="text-sm text-warning-700 dark:text-warning-300">Outstanding</div>
-                    </div>
-                  </div>
-                </ReportCard>
-
-                {/* Revenue by Client */}
-                {revenueByClient && revenueByClient.length > 0 && (
+                {/* Breakdown by Project */}
+                {profitLossData.projectBreakdown && profitLossData.projectBreakdown.length > 0 && (
                   <ReportCard
-                    title="Revenue by Client"
-                    icon="Users"
+                    title="Profit & Loss by Project"
+                    icon="Briefcase"
                   >
                     <div className="space-y-4">
-                      <Chart
-                        options={getClientRevenueOptions(revenueByClient.slice(0, 10))}
-                        series={[{
-                          name: 'Revenue',
-                          data: revenueByClient.slice(0, 10).map(item => item.revenue)
-                        }]}
-                        type="bar"
-                        height={400}
-                      />
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {revenueByClient.slice(0, 6).map((client, index) => (
-                          <div key={client.clientId} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                            <div>
-                              <span className="font-medium text-slate-900 dark:text-slate-100">{client.clientName}</span>
-                              <div className="text-sm text-slate-600 dark:text-slate-400">
-                                {client.invoiceCount} invoice{client.invoiceCount !== 1 ? 's' : ''}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {profitLossData.projectBreakdown.slice(0, 8).map((project, index) => (
+                          <div key={project.projectId} className="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold text-slate-900 dark:text-slate-100">
+                                {project.projectName}
+                              </h4>
+                              <span className={`text-sm font-medium px-2 py-1 rounded ${
+                                project.margin > 0 
+                                  ? 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400'
+                                  : 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-400'
+                              }`}>
+                                {project.margin > 0 ? '+' : ''}{project.margin.toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <div className="text-slate-600 dark:text-slate-400">Revenue</div>
+                                <div className="font-medium text-success-600 dark:text-success-400">
+                                  {formatCurrency(project.revenue)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-slate-600 dark:text-slate-400">Expenses</div>
+                                <div className="font-medium text-error-600 dark:text-error-400">
+                                  {formatCurrency(project.expenses)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-slate-600 dark:text-slate-400">Profit</div>
+                                <div className={`font-medium ${
+                                  project.profit > 0 
+                                    ? 'text-success-600 dark:text-success-400'
+                                    : 'text-error-600 dark:text-error-400'
+                                }`}>
+                                  {formatCurrency(project.profit)}
+                                </div>
                               </div>
                             </div>
-                            <span className="font-semibold text-slate-900 dark:text-slate-100">
-                              {formatCurrency(client.revenue)}
-                            </span>
                           </div>
                         ))}
                       </div>
@@ -705,65 +747,61 @@ options={getRevenueChartOptions(dashboardData.revenueChart)}
                   </ReportCard>
                 )}
 
-                {/* Revenue by Project */}
-                {revenueByProject && revenueByProject.length > 0 && (
+                {/* Breakdown by Category */}
+                {profitLossData.categoryBreakdown && profitLossData.categoryBreakdown.length > 0 && (
                   <ReportCard
-                    title="Revenue by Project"
-                    icon="Briefcase"
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {revenueByProject.slice(0, 9).map((project, index) => (
-                        <div key={project.projectId} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                          <div>
-                            <span className="font-medium text-slate-900 dark:text-slate-100">{project.projectName}</span>
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              {project.invoiceCount} invoice{project.invoiceCount !== 1 ? 's' : ''}
-                            </div>
-                          </div>
-                          <span className="font-semibold text-slate-900 dark:text-slate-100">
-                            {formatCurrency(project.revenue)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </ReportCard>
-                )}
-
-                {/* Revenue Forecast */}
-                {revenueForecast && (
-                  <ReportCard
-                    title="Revenue Forecast"
-                    icon="TrendingUp"
+                    title="Expenses by Category"
+                    icon="PieChart"
                   >
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                            {formatCurrency(revenueForecast.averageMonthlyRevenue)}
-                          </div>
-                          <div className="text-sm text-blue-700 dark:text-blue-300">Average Monthly</div>
-                        </div>
-                        <div className="text-center p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
-                          <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                            {revenueForecast.growthRate > 0 ? '+' : ''}{revenueForecast.growthRate.toFixed(1)}%
-                          </div>
-                          <div className="text-sm text-indigo-700 dark:text-indigo-300">Growth Rate</div>
-                        </div>
-                        <div className="text-center p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
-                          <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                            {revenueForecast.confidenceLevel.toFixed(0)}%
-                          </div>
-                          <div className="text-sm text-green-700 dark:text-green-300">Confidence</div>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        {revenueForecast.forecast.map((month, index) => (
-                          <div key={index} className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                              {month.period}
-                            </div>
-                            <div className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                              {formatCurrency(month.value)}
+                      <Chart
+                        options={{
+                          chart: {
+                            type: 'donut'
+                          },
+                          colors: ['#2C3E85', '#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#6B7280'],
+                          labels: profitLossData.categoryBreakdown.map(item => item.category),
+                          legend: {
+                            position: 'bottom',
+                            labels: {
+                              colors: '#64748b'
+                            }
+                          },
+                          plotOptions: {
+                            pie: {
+                              donut: {
+                                size: '70%'
+                              }
+                            }
+                          },
+                          dataLabels: {
+                            enabled: true,
+                            formatter: (val) => `${val.toFixed(1)}%`
+                          },
+                          tooltip: {
+                            y: {
+                              formatter: (value, { seriesIndex }) => {
+                                const category = profitLossData.categoryBreakdown[seriesIndex]
+                                return formatCurrency(category.amount)
+                              }
+                            }
+                          }
+                        }}
+                        series={profitLossData.categoryBreakdown.map(item => item.percentage)}
+                        type="donut"
+                        height={350}
+                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        {profitLossData.categoryBreakdown.map((category, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                            <span className="font-medium text-slate-900 dark:text-slate-100">{category.category}</span>
+                            <div className="text-right">
+                              <div className="font-semibold text-slate-900 dark:text-slate-100">
+                                {formatCurrency(category.amount)}
+                              </div>
+                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                                {category.percentage.toFixed(1)}%
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -774,79 +812,240 @@ options={getRevenueChartOptions(dashboardData.revenueChart)}
               </>
             )}
 
-            {/* Financial Summary (existing) */}
-            {financialData && (
-              <>
-                {/* Financial Summary Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <MetricCard
-                    title="Total Revenue"
-                    value={formatCurrency(financialData.totalRevenue)}
-                    icon="DollarSign"
-                    className="bg-gradient-to-br from-success-50 to-success-100 dark:from-success-900/20 dark:to-success-800/20"
-                  />
-                  <MetricCard
-                    title="Total Expenses"
-                    value={formatCurrency(financialData.totalExpenses)}
-                    icon="Receipt"
-                    className="bg-gradient-to-br from-error-50 to-error-100 dark:from-error-900/20 dark:to-error-800/20"
-                  />
-                  <MetricCard
-                    title="Gross Profit"
-                    value={formatCurrency(financialData.grossProfit)}
-                    icon="TrendingUp"
-                    className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20"
-                  />
-                  <MetricCard
-                    title="Profit Margin"
-                    value={`${financialData.profitMargin.toFixed(1)}%`}
-                    icon="Percent"
-                    className="bg-gradient-to-br from-accent-50 to-accent-100 dark:from-accent-900/20 dark:to-accent-800/20"
+            {/* Monthly Comparison */}
+            {monthlyComparisonData && (
+              <ReportCard
+                title="Monthly Comparison"
+                icon="Calendar"
+              >
+                <div className="space-y-6">
+                  {/* Trend Indicators */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                      <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                        {monthlyComparisonData.trends.revenue > 0 ? '+' : ''}{monthlyComparisonData.trends.revenue.toFixed(1)}%
+                      </div>
+                      <div className="text-sm text-blue-700 dark:text-blue-300">Revenue Trend</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-orange-50 dark:bg-orange-900/20">
+                      <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                        {monthlyComparisonData.trends.expenses > 0 ? '+' : ''}{monthlyComparisonData.trends.expenses.toFixed(1)}%
+                      </div>
+                      <div className="text-sm text-orange-700 dark:text-orange-300">Expense Trend</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                      <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                        {monthlyComparisonData.trends.profit > 0 ? '+' : ''}{monthlyComparisonData.trends.profit.toFixed(1)}%
+                      </div>
+                      <div className="text-sm text-purple-700 dark:text-purple-300">Profit Trend</div>
+                    </div>
+                  </div>
+
+                  {/* Monthly Data Chart */}
+                  <Chart
+                    options={{
+                      chart: {
+                        type: 'line',
+                        toolbar: { show: false }
+                      },
+                      colors: ['#10B981', '#EF4444', '#2C3E85'],
+                      stroke: {
+                        curve: 'smooth',
+                        width: 3
+                      },
+                      xaxis: {
+                        categories: monthlyComparisonData.monthlyData.map(item => item.month),
+                        labels: {
+                          style: {
+                            colors: '#64748b',
+                            fontSize: '12px'
+                          }
+                        }
+                      },
+                      yaxis: {
+                        labels: {
+                          style: {
+                            colors: '#64748b',
+                            fontSize: '12px'
+                          },
+                          formatter: (value) => formatCurrency(value)
+                        }
+                      },
+                      tooltip: {
+                        y: {
+                          formatter: (value) => formatCurrency(value)
+                        }
+                      },
+                      legend: {
+                        position: 'top',
+                        horizontalAlign: 'center'
+                      },
+                      grid: {
+                        borderColor: '#e2e8f0',
+                        strokeDashArray: 4
+                      }
+                    }}
+                    series={[
+                      {
+                        name: 'Revenue',
+                        data: monthlyComparisonData.monthlyData.map(item => item.revenue)
+                      },
+                      {
+                        name: 'Expenses',
+                        data: monthlyComparisonData.monthlyData.map(item => item.expenses)
+                      },
+                      {
+                        name: 'Profit',
+                        data: monthlyComparisonData.monthlyData.map(item => item.profit)
+                      }
+                    ]}
+                    type="line"
+                    height={350}
                   />
                 </div>
+              </ReportCard>
+            )}
 
-                {/* Invoice Breakdown */}
-                <ReportCard
-                  title="Invoice Breakdown"
-                  icon="FileText"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-4 rounded-lg bg-success-50 dark:bg-success-900/20">
-                      <div className="text-2xl font-bold text-success-600 dark:text-success-400">
-                        {financialData.invoiceBreakdown.paid}
+            {/* Year-to-Date Summary */}
+            {ytdSummaryData && (
+              <ReportCard
+                title="Year-to-Date Summary"
+                icon="Trophy"
+              >
+                <div className="space-y-6">
+                  {/* Current vs Previous Year */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                      <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                        {new Date().getFullYear()} (Current Year)
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-success-50 dark:bg-success-900/20">
+                          <span className="text-success-700 dark:text-success-300">Total Revenue</span>
+                          <span className="font-semibold text-success-600 dark:text-success-400">
+                            {formatCurrency(ytdSummaryData.currentYear.revenue)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-error-50 dark:bg-error-900/20">
+                          <span className="text-error-700 dark:text-error-300">Total Expenses</span>
+                          <span className="font-semibold text-error-600 dark:text-error-400">
+                            {formatCurrency(ytdSummaryData.currentYear.expenses)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-primary-50 dark:bg-primary-900/20">
+                          <span className="text-primary-700 dark:text-primary-300">Net Profit</span>
+                          <span className="font-semibold text-primary-600 dark:text-primary-400">
+                            {formatCurrency(ytdSummaryData.currentYear.profit)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-accent-50 dark:bg-accent-900/20">
+                          <span className="text-accent-700 dark:text-accent-300">Profit Margin</span>
+                          <span className="font-semibold text-accent-600 dark:text-accent-400">
+                            {ytdSummaryData.currentYear.margin.toFixed(1)}%
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-sm text-success-700 dark:text-success-300">Paid Invoices</div>
                     </div>
-                    <div className="text-center p-4 rounded-lg bg-warning-50 dark:bg-warning-900/20">
-                      <div className="text-2xl font-bold text-warning-600 dark:text-warning-400">
-                        {financialData.invoiceBreakdown.pending}
+
+                    <div>
+                      <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                        {new Date().getFullYear() - 1} (Previous Year)
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <span className="text-slate-700 dark:text-slate-300">Total Revenue</span>
+                          <span className="font-semibold text-slate-600 dark:text-slate-400">
+                            {formatCurrency(ytdSummaryData.previousYear.revenue)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <span className="text-slate-700 dark:text-slate-300">Total Expenses</span>
+                          <span className="font-semibold text-slate-600 dark:text-slate-400">
+                            {formatCurrency(ytdSummaryData.previousYear.expenses)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <span className="text-slate-700 dark:text-slate-300">Net Profit</span>
+                          <span className="font-semibold text-slate-600 dark:text-slate-400">
+                            {formatCurrency(ytdSummaryData.previousYear.profit)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <span className="text-slate-700 dark:text-slate-300">Profit Margin</span>
+                          <span className="font-semibold text-slate-600 dark:text-slate-400">
+                            {ytdSummaryData.previousYear.margin.toFixed(1)}%
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-sm text-warning-700 dark:text-warning-300">Pending Invoices</div>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-error-50 dark:bg-error-900/20">
-                      <div className="text-2xl font-bold text-error-600 dark:text-error-400">
-                        {financialData.invoiceBreakdown.overdue}
-                      </div>
-                      <div className="text-sm text-error-700 dark:text-error-300">Overdue Invoices</div>
                     </div>
                   </div>
-                </ReportCard>
 
-                {/* Expense Breakdown */}
-                <ReportCard
-                  title="Expenses by Category"
-                  icon="PieChart"
-                >
-                  <div className="space-y-3">
-                    {financialData.expenseBreakdown?.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                        <span className="font-medium text-slate-900 dark:text-slate-100">{item.category}</span>
-                        <span className="text-slate-600 dark:text-slate-400">{formatCurrency(item.amount)}</span>
+                  {/* Growth Indicators */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <div className="text-center p-4 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <ApperIcon 
+                          name={ytdSummaryData.growth.revenue >= 0 ? "TrendingUp" : "TrendingDown"} 
+                          className={`h-5 w-5 ${ytdSummaryData.growth.revenue >= 0 ? 'text-success-600' : 'text-error-600'}`} 
+                        />
+                        <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                          {ytdSummaryData.growth.revenue > 0 ? '+' : ''}{ytdSummaryData.growth.revenue.toFixed(1)}%
+                        </span>
                       </div>
-                    ))}
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Revenue Growth</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <ApperIcon 
+                          name={ytdSummaryData.growth.expenses >= 0 ? "TrendingUp" : "TrendingDown"} 
+                          className={`h-5 w-5 ${ytdSummaryData.growth.expenses >= 0 ? 'text-error-600' : 'text-success-600'}`} 
+                        />
+                        <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                          {ytdSummaryData.growth.expenses > 0 ? '+' : ''}{ytdSummaryData.growth.expenses.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Expense Growth</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <ApperIcon 
+                          name={ytdSummaryData.growth.profit >= 0 ? "TrendingUp" : "TrendingDown"} 
+                          className={`h-5 w-5 ${ytdSummaryData.growth.profit >= 0 ? 'text-success-600' : 'text-error-600'}`} 
+                        />
+                        <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                          {ytdSummaryData.growth.profit > 0 ? '+' : ''}{ytdSummaryData.growth.profit.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Profit Growth</div>
+                    </div>
                   </div>
-                </ReportCard>
-              </>
+
+                  {/* Average Monthly Performance */}
+                  <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Average Monthly Performance</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                        <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                          {formatCurrency(ytdSummaryData.averageMonthly.revenue)}
+                        </div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">Avg Monthly Revenue</div>
+                      </div>
+                      <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                        <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                          {formatCurrency(ytdSummaryData.averageMonthly.expenses)}
+                        </div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">Avg Monthly Expenses</div>
+                      </div>
+                      <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                        <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                          {formatCurrency(ytdSummaryData.averageMonthly.profit)}
+                        </div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">Avg Monthly Profit</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ReportCard>
             )}
           </div>
         )}
