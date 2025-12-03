@@ -23,8 +23,9 @@ const Reports = () => {
   })
 const [dashboardData, setDashboardData] = useState(null)
   const [profitLossData, setProfitLossData] = useState(null)
-  const [monthlyComparisonData, setMonthlyComparisonData] = useState(null)
+const [monthlyComparisonData, setMonthlyComparisonData] = useState(null)
   const [ytdSummaryData, setYtdSummaryData] = useState(null)
+  const [projectAnalyticsData, setProjectAnalyticsData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -39,8 +40,8 @@ const [dashboardData, setDashboardData] = useState(null)
       
       if (activeTab === 'overview') {
         const data = await reportsService.getOverviewDashboard(dateRange)
-        setDashboardData(data)
-} else if (activeTab === 'financial') {
+setDashboardData(data)
+      } else if (activeTab === 'financial') {
         // Load Profit & Loss data
         const [profitLoss, monthlyComparison, ytdSummary] = await Promise.all([
           reportsService.getProfitLossReport({
@@ -57,6 +58,13 @@ const [dashboardData, setDashboardData] = useState(null)
         setProfitLossData(profitLoss)
         setMonthlyComparisonData(monthlyComparison)
         setYtdSummaryData(ytdSummary)
+      } else if (activeTab === 'projects') {
+        // Load Project Analytics data
+        const projectAnalytics = await reportsService.getProjectAnalytics({
+          startDate: new Date(dateRange.startDate),
+          endDate: new Date(dateRange.endDate)
+        })
+        setProjectAnalyticsData(projectAnalytics)
       }
     } catch (err) {
       setError('Failed to load report data')
@@ -1049,9 +1057,282 @@ options={getRevenueChartOptions(dashboardData.revenueChart)}
             )}
           </div>
         )}
+{/* Project Analytics Tab */}
+        {activeTab === 'projects' && (
+          <div className="space-y-8">
+            {projectAnalyticsData && (
+              <>
+                {/* Project Performance Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <MetricCard
+                    title="Total Projects"
+                    value={projectAnalyticsData.totalProjects}
+                    icon="Folder"
+                    className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
+                  />
+                  <MetricCard
+                    title="Completion Rate"
+                    value={`${projectAnalyticsData.completionRate.toFixed(1)}%`}
+                    icon="CheckCircle"
+                    className="bg-gradient-to-br from-success-50 to-success-100 dark:from-success-900/20 dark:to-success-800/20"
+                  />
+                  <MetricCard
+                    title="Total Revenue"
+                    value={formatCurrency(projectAnalyticsData.totalRevenue)}
+                    icon="DollarSign"
+                    className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20"
+                  />
+                  <MetricCard
+                    title="Avg Project Value"
+                    value={formatCurrency(projectAnalyticsData.averageProjectValue)}
+                    icon="TrendingUp"
+                    className="bg-gradient-to-br from-accent-50 to-accent-100 dark:from-accent-900/20 dark:to-accent-800/20"
+                  />
+                </div>
+
+                {/* Project Status Distribution */}
+                <ReportCard
+                  title="Project Status Distribution"
+                  icon="PieChart"
+                >
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <Chart
+                        options={{
+                          chart: {
+                            type: 'donut'
+                          },
+                          colors: ['#10B981', '#F59E0B', '#EF4444', '#6B7280', '#2C3E85'],
+                          labels: projectAnalyticsData.statusDistribution.map(item => item.status),
+                          legend: {
+                            position: 'bottom',
+                            labels: {
+                              colors: '#64748b'
+                            }
+                          },
+                          plotOptions: {
+                            pie: {
+                              donut: {
+                                size: '70%'
+                              }
+                            }
+                          },
+                          dataLabels: {
+                            enabled: true,
+                            formatter: (val) => `${val.toFixed(1)}%`
+                          },
+                          tooltip: {
+                            y: {
+                              formatter: (value, { seriesIndex }) => {
+                                const status = projectAnalyticsData.statusDistribution[seriesIndex]
+                                return `${status.count} projects`
+                              }
+                            }
+                          }
+                        }}
+                        series={projectAnalyticsData.statusDistribution.map(item => item.percentage)}
+                        type="donut"
+                        height={300}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      {projectAnalyticsData.statusDistribution.map((status, index) => (
+                        <div key={index} className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#6B7280', '#2C3E85'][index] }}></div>
+                            <span className="font-medium text-slate-900 dark:text-slate-100">{status.status}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-slate-900 dark:text-slate-100">
+                              {status.count}
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              {status.percentage.toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </ReportCard>
+
+                {/* Project Timeline Analysis */}
+                <ReportCard
+                  title="Project Timeline Analysis"
+                  icon="Calendar"
+                >
+                  <div className="space-y-6">
+                    <Chart
+                      options={{
+                        chart: {
+                          type: 'bar',
+                          toolbar: { show: false },
+                          stacked: false
+                        },
+                        colors: ['#2C3E85', '#10B981', '#EF4444'],
+                        plotOptions: {
+                          bar: {
+                            borderRadius: 4,
+                            dataLabels: {
+                              position: 'top'
+                            }
+                          }
+                        },
+                        dataLabels: {
+                          enabled: false
+                        },
+                        xaxis: {
+                          categories: projectAnalyticsData.timelineAnalysis.map(item => item.period),
+                          labels: {
+                            style: {
+                              colors: '#64748b',
+                              fontSize: '12px'
+                            }
+                          }
+                        },
+                        yaxis: {
+                          labels: {
+                            style: {
+                              colors: '#64748b',
+                              fontSize: '12px'
+                            }
+                          }
+                        },
+                        legend: {
+                          position: 'top',
+                          horizontalAlign: 'center'
+                        },
+                        grid: {
+                          borderColor: '#e2e8f0',
+                          strokeDashArray: 4
+                        }
+                      }}
+                      series={[
+                        {
+                          name: 'Started',
+                          data: projectAnalyticsData.timelineAnalysis.map(item => item.started)
+                        },
+                        {
+                          name: 'Completed',
+                          data: projectAnalyticsData.timelineAnalysis.map(item => item.completed)
+                        },
+                        {
+                          name: 'Overdue',
+                          data: projectAnalyticsData.timelineAnalysis.map(item => item.overdue)
+                        }
+                      ]}
+                      type="bar"
+                      height={350}
+                    />
+                  </div>
+                </ReportCard>
+
+                {/* Top Performing Projects */}
+                <ReportCard
+                  title="Top Performing Projects by Revenue"
+                  icon="Trophy"
+                >
+                  <div className="space-y-4">
+                    {projectAnalyticsData.topProjects.map((project, index) => (
+                      <div key={project.Id} className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-600/50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 font-semibold text-sm">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-slate-900 dark:text-slate-100">{project.name}</h4>
+                            <div className="flex items-center gap-4 mt-1 text-sm text-slate-600 dark:text-slate-400">
+                              <span>Client: {project.clientName}</span>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                project.status === 'Completed' ? 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
+                                project.status === 'In Progress' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                project.status === 'Planning' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                'bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-400'
+                              }`}>
+                                {project.status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-slate-900 dark:text-slate-100">
+                            {formatCurrency(project.revenue)}
+                          </div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">
+                            {project.profitMargin > 0 ? '+' : ''}{project.profitMargin.toFixed(1)}% margin
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ReportCard>
+
+                {/* Project Resource Allocation */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <ReportCard
+                    title="Projects by Client"
+                    icon="Building"
+                  >
+                    <div className="space-y-3">
+                      {projectAnalyticsData.projectsByClient.slice(0, 8).map((client, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{client.clientName}</span>
+                          <div className="text-right">
+                            <div className="font-semibold text-slate-900 dark:text-slate-100">
+                              {client.projectCount} projects
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              {formatCurrency(client.totalRevenue)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ReportCard>
+
+                  <ReportCard
+                    title="Project Duration Analysis"
+                    icon="Clock"
+                  >
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                            {projectAnalyticsData.durationAnalysis.averageDuration}
+                          </div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">Avg Duration (days)</div>
+                        </div>
+                        <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                            {projectAnalyticsData.durationAnalysis.onTimeProjects}
+                          </div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">On-Time Projects</div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600 dark:text-slate-400">Quick Projects (≤30 days)</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{projectAnalyticsData.durationAnalysis.quickProjects}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600 dark:text-slate-400">Medium Projects (31-90 days)</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{projectAnalyticsData.durationAnalysis.mediumProjects}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600 dark:text-slate-400">Long Projects (90+ days)</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{projectAnalyticsData.durationAnalysis.longProjects}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </ReportCard>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Other tabs - Coming soon */}
-        {['projects', 'team', 'clients'].includes(activeTab) && (
+        {['team', 'clients'].includes(activeTab) && (
           <ReportCard
             title={reportTabs.find(t => t.id === activeTab)?.label}
             icon={reportTabs.find(t => t.id === activeTab)?.icon}

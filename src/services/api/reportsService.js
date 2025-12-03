@@ -707,6 +707,161 @@ confidenceLevel: Math.max(50, 90 - (Math.abs(growthRate) * 100))
       message: `${reportType} report exported as ${format.toUpperCase()}`,
       filename: `${reportType}-${format(new Date(), 'yyyy-MM-dd')}.${format}`
     }
+},
+
+  // Project Analytics
+  async getProjectAnalytics(dateRange) {
+    await delay(800)
+    
+    const { startDate, endDate } = dateRange
+    
+    // Filter projects within date range (by start date or created date)
+    const periodProjects = projectsData.filter(project => {
+      const projectDate = new Date(project.startDate || project.createdAt)
+      return isWithinInterval(projectDate, { start: startDate, end: endDate })
+    })
+    
+    // Calculate basic metrics
+    const totalProjects = projectsData.length
+    const completedProjects = projectsData.filter(p => p.status === 'Completed').length
+    const completionRate = totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0
+    
+    // Revenue analysis from invoices
+    const projectRevenues = {}
+    invoicesData.forEach(invoice => {
+      if (invoice.projectId && invoice.status === 'paid') {
+        projectRevenues[invoice.projectId] = (projectRevenues[invoice.projectId] || 0) + invoice.amount
+      }
+    })
+    
+    const totalRevenue = Object.values(projectRevenues).reduce((sum, revenue) => sum + revenue, 0)
+    const averageProjectValue = totalProjects > 0 ? totalRevenue / totalProjects : 0
+    
+    // Status distribution
+    const statusCounts = {}
+    projectsData.forEach(project => {
+      const status = project.status || 'Unknown'
+      statusCounts[status] = (statusCounts[status] || 0) + 1
+    })
+    
+    const statusDistribution = Object.entries(statusCounts).map(([status, count]) => ({
+      status: status.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim(),
+      count,
+      percentage: (count / totalProjects) * 100
+    }))
+    
+    // Timeline analysis - projects started/completed by month
+    const timelineData = {}
+    for (let i = 5; i >= 0; i--) {
+      const month = subMonths(new Date(), i)
+      const monthKey = format(month, 'MMM yyyy')
+      const monthStart = startOfMonth(month)
+      const monthEnd = endOfMonth(month)
+      
+      const started = projectsData.filter(p => {
+        const startDate = new Date(p.startDate || p.createdAt)
+        return startDate >= monthStart && startDate <= monthEnd
+      }).length
+      
+      const completed = projectsData.filter(p => {
+        const completedDate = new Date(p.completedAt || p.updatedAt)
+        return p.status === 'Completed' && completedDate >= monthStart && completedDate <= monthEnd
+      }).length
+      
+      const overdue = projectsData.filter(p => {
+        return p.deadline && new Date(p.deadline) < new Date() && !['Completed', 'Cancelled'].includes(p.status)
+      }).length
+      
+      timelineData[monthKey] = { started, completed, overdue: i === 0 ? overdue : 0 }
+    }
+    
+    const timelineAnalysis = Object.entries(timelineData).map(([period, data]) => ({
+      period,
+      ...data
+    }))
+    
+    // Top performing projects by revenue
+    const topProjects = projectsData
+      .map(project => {
+        const revenue = projectRevenues[project.Id] || 0
+        const expenses = expensesData
+          .filter(exp => exp.projectId === project.Id)
+          .reduce((sum, exp) => sum + exp.amount, 0)
+        const profit = revenue - expenses
+        const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0
+        const client = clientsData.find(c => c.Id === project.clientId)
+        
+        return {
+          ...project,
+          revenue,
+          expenses,
+          profit,
+          profitMargin,
+          clientName: client ? client.company || client.name : 'Unknown Client'
+        }
+      })
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10)
+    
+    // Projects by client
+    const clientProjectCounts = {}
+    projectsData.forEach(project => {
+      const client = clientsData.find(c => c.Id === project.clientId)
+      const clientName = client ? client.company || client.name : 'Unknown Client'
+      
+      if (!clientProjectCounts[clientName]) {
+        clientProjectCounts[clientName] = {
+          clientName,
+          projectCount: 0,
+          totalRevenue: 0
+        }
+      }
+      
+      clientProjectCounts[clientName].projectCount += 1
+      clientProjectCounts[clientName].totalRevenue += projectRevenues[project.Id] || 0
+    })
+    
+    const projectsByClient = Object.values(clientProjectCounts)
+      .sort((a, b) => b.projectCount - a.projectCount)
+    
+    // Duration analysis
+    const durations = projectsData
+      .filter(p => p.startDate && (p.completedAt || p.deadline))
+      .map(p => {
+        const start = new Date(p.startDate)
+        const end = new Date(p.completedAt || p.deadline)
+        return differenceInDays(end, start)
+      })
+    
+    const averageDuration = durations.length > 0 ? 
+      Math.round(durations.reduce((sum, d) => sum + d, 0) / durations.length) : 0
+    
+    const quickProjects = durations.filter(d => d <= 30).length
+    const mediumProjects = durations.filter(d => d > 30 && d <= 90).length
+    const longProjects = durations.filter(d => d > 90).length
+    
+    const onTimeProjects = projectsData.filter(p => {
+      if (!p.deadline || !p.completedAt) return false
+      return new Date(p.completedAt) <= new Date(p.deadline)
+    }).length
+    
+    return {
+      totalProjects,
+      completionRate,
+      totalRevenue,
+      averageProjectValue,
+      statusDistribution,
+      timelineAnalysis,
+      topProjects,
+      projectsByClient,
+      durationAnalysis: {
+        averageDuration,
+        quickProjects,
+        mediumProjects,
+        longProjects,
+        onTimeProjects
+      }
+    }
   }
 }
 
