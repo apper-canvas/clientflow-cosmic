@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import React, { Suspense, lazy } from "react";
 
+
 // Lazy load page components
 const Layout = lazy(() => import("@/components/organisms/Layout"));
 const Dashboard = lazy(() => import("@/components/pages/Dashboard"));
@@ -33,7 +34,7 @@ const LoadingFallback = () => (
       </svg>
     </div>
   </div>
-);
+
 
 const mainRoutes = [
   {
