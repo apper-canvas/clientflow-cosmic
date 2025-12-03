@@ -1,9 +1,8 @@
 import { createBrowserRouter } from "react-router-dom";
 import React, { Suspense, lazy } from "react";
 
-
 // Lazy load page components
-const Layout1 = lazy(() => import("@/components/organisms/Layout"));
+const Layout = lazy(() => import("@/components/organisms/Layout"));
 const Dashboard = lazy(() => import("@/components/pages/Dashboard"));
 const Clients = lazy(() => import("@/components/pages/Clients"));
 const ClientDetail = lazy(() => import("@/components/pages/ClientDetail"));
@@ -36,7 +35,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-const mainRoutes = 
+const mainRoutes = [
   {
     path: "",
     index: true,
@@ -120,7 +119,7 @@ const mainRoutes =
   }
 ];
 
-const routes = 
+const routes = [
   {
     path: "/",
     element: <Suspense fallback={<LoadingFallback />}><Layout /></Suspense>,
