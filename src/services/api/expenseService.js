@@ -79,7 +79,7 @@ async getByCategory(category) {
     }).map(e => ({ ...e }))
   },
 
-  // Expense Reports Methods
+// Expense Reports Methods
   async getExpenseReports(startDate, endDate) {
     await new Promise(resolve => setTimeout(resolve, 300))
     const filteredExpenses = startDate && endDate 
@@ -94,6 +94,99 @@ async getByCategory(category) {
       byPeriod: this.groupExpensesByPeriod(filteredExpenses),
       billableVsNonBillable: this.getBillableBreakdown(filteredExpenses),
       approvalStatus: this.getApprovalBreakdown(filteredExpenses)
+    }
+  },
+
+  async getExpensesByProject(projectId) {
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
+    if (!projectId) {
+      return []
+    }
+    
+    const projectExpenses = expenses.filter(expense => 
+      expense.projectId === parseInt(projectId)
+    ).map(expense => ({ ...expense }))
+    
+    return projectExpenses
+  },
+
+  async getProjectExpenseReport(projectId) {
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    const projectExpenses = await this.getExpensesByProject(projectId)
+    
+    if (projectExpenses.length === 0) {
+      return {
+        projectId: parseInt(projectId),
+        totalAmount: 0,
+        expenseCount: 0,
+        byCategory: {},
+        byTeamMember: {},
+        billableBreakdown: { billable: 0, nonBillable: 0 },
+        statusBreakdown: { pending: 0, approved: 0, reimbursed: 0, rejected: 0 },
+        expenses: []
+      }
+    }
+
+    // Calculate totals
+    const totalAmount = projectExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+    
+    // Group by category
+    const byCategory = projectExpenses.reduce((groups, expense) => {
+      const category = expense.category
+      if (!groups[category]) {
+        groups[category] = { count: 0, amount: 0 }
+      }
+      groups[category].count++
+      groups[category].amount += expense.amount
+      return groups
+    }, {})
+    
+    // Group by team member (using clientId)
+    const byTeamMember = projectExpenses.reduce((groups, expense) => {
+      const clientId = expense.clientId || 'unassigned'
+      if (!groups[clientId]) {
+        groups[clientId] = { count: 0, amount: 0, expenses: [] }
+      }
+      groups[clientId].count++
+      groups[clientId].amount += expense.amount
+      groups[clientId].expenses.push(expense)
+      return groups
+    }, {})
+    
+    // Calculate billable breakdown
+    const billableBreakdown = projectExpenses.reduce((breakdown, expense) => {
+      // Assume expenses for projects are billable unless marked as "office" or "utilities" categories
+      const isBillable = !['office', 'utilities'].includes(expense.category)
+      
+      if (isBillable) {
+        breakdown.billable += expense.amount
+      } else {
+        breakdown.nonBillable += expense.amount
+      }
+      return breakdown
+    }, { billable: 0, nonBillable: 0 })
+    
+    // Group by status
+    const statusBreakdown = projectExpenses.reduce((breakdown, expense) => {
+      const status = expense.status
+      if (!breakdown[status]) {
+        breakdown[status] = 0
+      }
+      breakdown[status] += expense.amount
+      return breakdown
+    }, { pending: 0, approved: 0, reimbursed: 0, rejected: 0 })
+
+    return {
+      projectId: parseInt(projectId),
+      totalAmount,
+      expenseCount: projectExpenses.length,
+      byCategory,
+      byTeamMember,
+      billableBreakdown,
+      statusBreakdown,
+      expenses: projectExpenses
     }
   },
 
