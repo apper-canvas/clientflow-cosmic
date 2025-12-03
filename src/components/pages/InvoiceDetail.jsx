@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "react-toastify";
-import { format } from "date-fns";
-import invoiceService, { CURRENCIES, INVOICE_STATUSES } from "@/services/api/invoiceService";
-import clientService from "@/services/api/clientService";
-import projectService from "@/services/api/projectService";
-import ApperIcon from "@/components/ApperIcon";
-import Loading from "@/components/ui/Loading";
-import ErrorView from "@/components/ui/ErrorView";
-import Button from "@/components/atoms/Button";
-import PaymentForm from "@/components/organisms/PaymentForm";
-import StatusBadge from "@/components/molecules/StatusBadge";
-import { cn } from "@/utils/cn";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { format } from 'date-fns';
+import Button from '@/components/atoms/Button';
+import StatusBadge from '@/components/molecules/StatusBadge';
+import PaymentForm from '@/components/organisms/PaymentForm';
+import Loading from '@/components/ui/Loading';
+import ErrorView from '@/components/ui/ErrorView';
+import ApperIcon from '@/components/ApperIcon';
+import invoiceService, { INVOICE_STATUSES, CURRENCIES } from '@/services/api/invoiceService';
+import clientService from '@/services/api/clientService';
+import projectService from '@/services/api/projectService';
+import { cn } from '@/utils/cn';
 
 const InvoiceDetail = () => {
   const { id } = useParams();
@@ -22,51 +22,31 @@ const InvoiceDetail = () => {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [sendingReminder, setSendingReminder] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   useEffect(() => {
     loadInvoiceData();
   }, [id]);
 
-const loadInvoiceData = async () => {
+  const loadInvoiceData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Validate invoice ID
-      if (!id || isNaN(parseInt(id))) {
-        setError('Invalid invoice ID');
-        return;
-      }
-      
       const invoiceResponse = await invoiceService.getById(id);
       setInvoice(invoiceResponse);
       
-      // Load related data only if invoice exists
-      if (invoiceResponse?.clientId) {
-        try {
-          const clientResponse = await clientService.getById(invoiceResponse.clientId);
-          setClient(clientResponse);
-        } catch (clientError) {
-          console.error('Error loading client:', clientError);
-          // Continue without client data - non-critical
-        }
-      }
+      // Load related data
+      const clientResponse = await clientService.getById(invoiceResponse.clientId);
+      setClient(clientResponse);
       
-      if (invoiceResponse?.projectId) {
-        try {
-          const projectResponse = await projectService.getById(invoiceResponse.projectId);
-          setProject(projectResponse);
-        } catch (projectError) {
-          console.error('Error loading project:', projectError);
-          // Continue without project data - non-critical
-        }
+      if (invoiceResponse.projectId) {
+        const projectResponse = await projectService.getById(invoiceResponse.projectId);
+        setProject(projectResponse);
       }
     } catch (error) {
       console.error('Error loading invoice:', error);
-      setError(error.message || 'Failed to load invoice');
-      setInvoice(null);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -89,40 +69,22 @@ const loadInvoiceData = async () => {
     return colors[status] || colors[INVOICE_STATUSES.DRAFT];
   };
 
-const handleEdit = () => {
-    if (!invoice?.Id) {
-      toast.error('Cannot edit invoice - invalid data');
-      return;
-    }
+  const handleEdit = () => {
     navigate(`/invoices/edit/${invoice.Id}`);
   };
 
-const handleDuplicate = async () => {
-    if (!invoice?.Id) {
-      toast.error('Cannot duplicate invoice - invalid data');
-      return;
-    }
-    
+  const handleDuplicate = async () => {
     try {
       const duplicated = await invoiceService.duplicate(invoice.Id);
-      if (duplicated?.Id) {
-        navigate(`/invoices/edit/${duplicated.Id}`);
-        toast.success('Invoice duplicated successfully');
-      } else {
-        toast.error('Failed to duplicate invoice - invalid response');
-      }
+      navigate(`/invoices/edit/${duplicated.Id}`);
+      toast.success('Invoice duplicated successfully');
     } catch (error) {
       console.error('Error duplicating invoice:', error);
       toast.error(error.message || 'Failed to duplicate invoice');
     }
   };
 
-const handleSend = async () => {
-    if (!invoice?.Id) {
-      toast.error('Cannot send invoice - invalid data');
-      return;
-    }
-    
+  const handleSend = async () => {
     if (!client?.email) {
       toast.error('Client email is required to send invoice');
       return;
@@ -135,34 +97,14 @@ const handleSend = async () => {
         message: 'Please find attached your invoice.'
       });
       
-      setInvoice(prev => prev ? { ...prev, status: INVOICE_STATUSES.SENT } : null);
+      setInvoice(prev => ({ ...prev, status: INVOICE_STATUSES.SENT }));
       toast.success('Invoice sent successfully');
     } catch (error) {
       console.error('Error sending invoice:', error);
       toast.error(error.message || 'Failed to send invoice');
     }
   };
-const handleSendReminder = async () => {
-    try {
-      setSendingReminder(true);
-      
-      const reminderData = {
-        type: 'manual',
-        message: `Payment reminder for invoice ${invoice.invoiceNumber}`,
-        sentBy: 'User'
-      };
-      
-      await invoiceService.sendReminder(invoice.Id, reminderData);
-      
-      toast.success('Payment reminder sent successfully');
-      loadInvoiceData(); // Reload to show updated reminder history
-    } catch (error) {
-      console.error('Error sending reminder:', error);
-      toast.error(error.message || 'Failed to send reminder');
-    } finally {
-      setSendingReminder(false);
-    }
-  };
+
   const handleRecordPayment = () => {
     if (invoice.status === INVOICE_STATUSES.PAID) {
       toast.info('This invoice is already fully paid');
@@ -186,17 +128,12 @@ const handleSendReminder = async () => {
     }
   };
 
-const handleMarkAsSent = async () => {
-    if (!invoice?.Id) {
-      toast.error('Cannot update invoice - invalid data');
-      return;
-    }
-    
+  const handleMarkAsSent = async () => {
     try {
       const updatedInvoice = await invoiceService.update(invoice.Id, { 
         status: INVOICE_STATUSES.SENT 
       });
-      setInvoice(updatedInvoice || null);
+      setInvoice(updatedInvoice);
       toast.success('Invoice marked as sent');
     } catch (error) {
       console.error('Error updating invoice:', error);
@@ -204,12 +141,7 @@ const handleMarkAsSent = async () => {
     }
   };
 
-const handleCancel = async () => {
-    if (!invoice?.Id) {
-      toast.error('Cannot cancel invoice - invalid data');
-      return;
-    }
-    
+  const handleCancel = async () => {
     if (!confirm('Are you sure you want to cancel this invoice? This action cannot be undone.')) {
       return;
     }
@@ -218,7 +150,7 @@ const handleCancel = async () => {
       const updatedInvoice = await invoiceService.update(invoice.Id, { 
         status: INVOICE_STATUSES.CANCELLED 
       });
-      setInvoice(updatedInvoice || null);
+      setInvoice(updatedInvoice);
       toast.success('Invoice cancelled');
     } catch (error) {
       console.error('Error cancelling invoice:', error);
@@ -273,18 +205,11 @@ const handleCancel = async () => {
             </Button>
           )}
           
-{(invoice.status === INVOICE_STATUSES.SENT || invoice.status === INVOICE_STATUSES.VIEWED || invoice.status === INVOICE_STATUSES.OVERDUE) && (
-            <>
-              <Button onClick={handleRecordPayment}>
-                <ApperIcon name="CreditCard" size={16} className="mr-2" />
-                Record Payment
-              </Button>
-              
-              <Button variant="outline" onClick={handleSendReminder}>
-                <ApperIcon name="Bell" size={16} className="mr-2" />
-                Send Reminder
-              </Button>
-            </>
+          {(invoice.status === INVOICE_STATUSES.SENT || invoice.status === INVOICE_STATUSES.VIEWED || invoice.status === INVOICE_STATUSES.OVERDUE) && (
+            <Button onClick={handleRecordPayment}>
+              <ApperIcon name="CreditCard" size={16} className="mr-2" />
+              Record Payment
+            </Button>
           )}
           
           <Button variant="outline" onClick={handleDuplicate}>

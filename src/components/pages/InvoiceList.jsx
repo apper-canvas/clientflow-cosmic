@@ -1,21 +1,21 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
-import { format } from "date-fns";
-import invoiceService, { INVOICE_STATUSES } from "@/services/api/invoiceService";
-import clientService from "@/services/api/clientService";
-import ApperIcon from "@/components/ApperIcon";
-import Loading from "@/components/ui/Loading";
-import ErrorView from "@/components/ui/ErrorView";
-import Empty from "@/components/ui/Empty";
-import Select from "@/components/atoms/Select";
-import Button from "@/components/atoms/Button";
-import Input from "@/components/atoms/Input";
-import PaymentForm from "@/components/organisms/PaymentForm";
-import InvoiceForm from "@/components/organisms/InvoiceForm";
-import SearchBar from "@/components/molecules/SearchBar";
-import StatusBadge from "@/components/molecules/StatusBadge";
-import { cn } from "@/utils/cn";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { format } from 'date-fns';
+import Button from '@/components/atoms/Button';
+import Input from '@/components/atoms/Input';
+import Select from '@/components/atoms/Select';
+import SearchBar from '@/components/molecules/SearchBar';
+import StatusBadge from '@/components/molecules/StatusBadge';
+import InvoiceForm from '@/components/organisms/InvoiceForm';
+import PaymentForm from '@/components/organisms/PaymentForm';
+import Loading from '@/components/ui/Loading';
+import ErrorView from '@/components/ui/ErrorView';
+import Empty from '@/components/ui/Empty';
+import ApperIcon from '@/components/ApperIcon';
+import invoiceService, { INVOICE_STATUSES } from '@/services/api/invoiceService';
+import clientService from '@/services/api/clientService';
+import { cn } from '@/utils/cn';
 
 const InvoiceList = () => {
   const navigate = useNavigate();
@@ -344,17 +344,8 @@ const InvoiceList = () => {
             Manage your invoices and track payments
           </p>
         </div>
-<div className="flex items-center gap-3">
-          {filters.dateRange === 'aging' && (
-            <Button
-              variant="outline"
-              onClick={() => navigate('/aging-report')}
-            >
-              <ApperIcon name="BarChart3" size={16} className="mr-2" />
-              View Full Aging Report
-            </Button>
-          )}
-          
+        
+        <div className="flex items-center gap-3">
           <Button
             variant="outline"
             onClick={() => setViewMode(viewMode === 'table' ? 'cards' : 'table')}
@@ -411,7 +402,8 @@ const InvoiceList = () => {
               placeholder="Filter by client"
             />
           </div>
-<div>
+          
+          <div>
             <Select
               value={filters.dateRange}
               onChange={(value) => handleFilterChange('dateRange', value)}
@@ -419,10 +411,8 @@ const InvoiceList = () => {
                 { value: 'all', label: 'All Time' },
                 { value: 'this_month', label: 'This Month' },
                 { value: 'last_30_days', label: 'Last 30 Days' },
-                { value: 'this_year', label: 'This Year' },
-                { value: 'aging', label: 'Aging Report' }
+                { value: 'this_year', label: 'This Year' }
               ]}
-              placeholder="Filter by date range"
             />
           </div>
         </div>

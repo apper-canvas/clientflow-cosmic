@@ -1,15 +1,10 @@
 import invoicesData from '@/services/mockData/invoices.json';
-import { format, isAfter, isBefore, parseISO, differenceInDays } from 'date-fns';
+import { format, isAfter, isBefore, parseISO } from 'date-fns';
 
 // In-memory storage for mock data
 let invoices = [...invoicesData];
 let nextId = Math.max(...invoices.map(inv => inv.Id)) + 1;
 let invoiceCounter = invoices.length + 1;
-
-// Credit notes storage
-let creditNotes = [];
-let nextCreditId = 1;
-let creditCounter = 1;
 
 // Invoice statuses and their workflow
 export const INVOICE_STATUSES = {
@@ -18,13 +13,6 @@ export const INVOICE_STATUSES = {
   VIEWED: 'viewed',
   PAID: 'paid',
   OVERDUE: 'overdue',
-  CANCELLED: 'cancelled'
-};
-
-// Credit note statuses
-export const CREDIT_NOTE_STATUSES = {
-  DRAFT: 'draft',
-  APPLIED: 'applied',
   CANCELLED: 'cancelled'
 };
 
@@ -62,13 +50,6 @@ function generateInvoiceNumber() {
   const year = new Date().getFullYear();
   const number = String(invoiceCounter++).padStart(3, '0');
   return `INV-${year}-${number}`;
-}
-
-// Generate credit note number
-function generateCreditNoteNumber() {
-  const year = new Date().getFullYear();
-  const number = String(creditCounter++).padStart(3, '0');
-  return `CN-${year}-${number}`;
 }
 
 // Calculate invoice totals
@@ -382,234 +363,6 @@ const invoiceService = {
       success: true,
       message: `Invoice ${invoice.invoiceNumber} sent successfully to ${emailData.to}`,
       sentAt: new Date().toISOString()
-};
-  },
-
-  // Send reminder
-  async sendReminder(invoiceId, reminderData) {
-    await delay(500);
-    
-    const index = invoices.findIndex(inv => inv.Id === parseInt(invoiceId));
-    if (index === -1) {
-      throw new Error('Invoice not found');
-    }
-    
-    const invoice = invoices[index];
-    if (invoice.status === INVOICE_STATUSES.PAID || invoice.status === INVOICE_STATUSES.CANCELLED) {
-      throw new Error('Cannot send reminder for paid or cancelled invoice');
-    }
-    
-    // Initialize reminders array if not exists
-    if (!invoice.reminders) {
-      invoice.reminders = [];
-    }
-    
-    const reminder = {
-      Id: Date.now(),
-      type: reminderData.type || 'manual',
-      message: reminderData.message || 'Payment reminder',
-      sentDate: format(new Date(), 'yyyy-MM-dd'),
-      sentBy: reminderData.sentBy || 'System',
-      createdAt: new Date().toISOString()
-    };
-    
-    invoice.reminders.push(reminder);
-    invoice.lastReminderDate = reminder.sentDate;
-    invoice.updatedAt = new Date().toISOString();
-    
-    invoices[index] = invoice;
-    
-    return {
-      success: true,
-      message: `Reminder sent successfully for invoice ${invoice.invoiceNumber}`,
-      reminderSent: reminder
-    };
-  },
-
-  // Get aging report
-  async getAgingReport() {
-    await delay(300);
-    
-    const today = new Date();
-    const outstandingInvoices = invoices
-      .map(invoice => updateInvoiceStatus({ ...invoice }))
-      .filter(invoice => 
-        invoice.status !== INVOICE_STATUSES.PAID && 
-        invoice.status !== INVOICE_STATUSES.CANCELLED &&
-        invoice.status !== INVOICE_STATUSES.DRAFT
-      );
-    
-    const agingBuckets = {
-      current: [], // 0-30 days
-      thirtyToSixty: [], // 31-60 days
-      sixtyToNinety: [], // 61-90 days
-      overNinety: [] // 90+ days
-    };
-    
-    outstandingInvoices.forEach(invoice => {
-      const daysPastDue = differenceInDays(today, parseISO(invoice.dueDate));
-      
-      if (daysPastDue <= 30) {
-        agingBuckets.current.push(invoice);
-      } else if (daysPastDue <= 60) {
-        agingBuckets.thirtyToSixty.push(invoice);
-      } else if (daysPastDue <= 90) {
-        agingBuckets.sixtyToNinety.push(invoice);
-      } else {
-        agingBuckets.overNinety.push(invoice);
-      }
-    });
-    
-    // Calculate totals
-    const totals = {
-      current: agingBuckets.current.reduce((sum, inv) => sum + inv.balanceDue, 0),
-      thirtyToSixty: agingBuckets.thirtyToSixty.reduce((sum, inv) => sum + inv.balanceDue, 0),
-      sixtyToNinety: agingBuckets.sixtyToNinety.reduce((sum, inv) => sum + inv.balanceDue, 0),
-      overNinety: agingBuckets.overNinety.reduce((sum, inv) => sum + inv.balanceDue, 0)
-    };
-    
-    totals.total = totals.current + totals.thirtyToSixty + totals.sixtyToNinety + totals.overNinety;
-    
-    // Group by client
-    const clientBreakdown = {};
-    outstandingInvoices.forEach(invoice => {
-      if (!clientBreakdown[invoice.clientId]) {
-        clientBreakdown[invoice.clientId] = {
-          current: 0,
-          thirtyToSixty: 0,
-          sixtyToNinety: 0,
-          overNinety: 0,
-          total: 0
-        };
-      }
-      
-      const daysPastDue = differenceInDays(today, parseISO(invoice.dueDate));
-      const clientData = clientBreakdown[invoice.clientId];
-      
-      if (daysPastDue <= 30) {
-        clientData.current += invoice.balanceDue;
-      } else if (daysPastDue <= 60) {
-        clientData.thirtyToSixty += invoice.balanceDue;
-      } else if (daysPastDue <= 90) {
-        clientData.sixtyToNinety += invoice.balanceDue;
-      } else {
-        clientData.overNinety += invoice.balanceDue;
-      }
-      
-      clientData.total += invoice.balanceDue;
-    });
-    
-    return {
-      agingBuckets,
-      totals,
-      clientBreakdown,
-      totalReceivables: totals.total,
-      generatedAt: new Date().toISOString()
-    };
-  },
-
-  // Create credit note
-  async createCreditNote(creditNoteData) {
-    await delay(400);
-    
-    const newCreditNote = {
-      Id: nextCreditId++,
-      creditNumber: generateCreditNoteNumber(),
-      clientId: creditNoteData.clientId,
-      invoiceId: creditNoteData.invoiceId || null,
-      amount: creditNoteData.amount,
-      reason: creditNoteData.reason || '',
-      notes: creditNoteData.notes || '',
-      status: CREDIT_NOTE_STATUSES.DRAFT,
-      issueDate: creditNoteData.issueDate || format(new Date(), 'yyyy-MM-dd'),
-      appliedAmount: 0,
-      remainingAmount: creditNoteData.amount,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    creditNotes.push(newCreditNote);
-    return { ...newCreditNote };
-  },
-
-  // Get credit notes
-  async getCreditNotes() {
-    await delay(200);
-    return [...creditNotes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  },
-
-  // Get credit notes by client
-  async getCreditNotesByClient(clientId) {
-    await delay(200);
-    return creditNotes
-      .filter(cn => cn.clientId === parseInt(clientId) && cn.remainingAmount > 0)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  },
-
-  // Apply credit note to invoice
-  async applyCreditNote(creditNoteId, invoiceId, amount) {
-    await delay(300);
-    
-    const creditNote = creditNotes.find(cn => cn.Id === parseInt(creditNoteId));
-    if (!creditNote) {
-      throw new Error('Credit note not found');
-    }
-    
-    if (amount > creditNote.remainingAmount) {
-      throw new Error('Amount cannot exceed remaining credit balance');
-    }
-    
-    const invoiceIndex = invoices.findIndex(inv => inv.Id === parseInt(invoiceId));
-    if (invoiceIndex === -1) {
-      throw new Error('Invoice not found');
-    }
-    
-    const invoice = invoices[invoiceIndex];
-    if (amount > invoice.balanceDue) {
-      throw new Error('Credit amount cannot exceed invoice balance');
-    }
-    
-    // Update credit note
-    creditNote.appliedAmount += amount;
-    creditNote.remainingAmount -= amount;
-    if (creditNote.remainingAmount <= 0) {
-      creditNote.status = CREDIT_NOTE_STATUSES.APPLIED;
-    }
-    creditNote.updatedAt = new Date().toISOString();
-    
-    // Update invoice
-    invoice.amountPaid += amount;
-    invoice.balanceDue -= amount;
-    
-    // Add credit application record
-    if (!invoice.creditApplications) {
-      invoice.creditApplications = [];
-    }
-    
-    invoice.creditApplications.push({
-      Id: Date.now(),
-      creditNoteId: creditNoteId,
-      creditNumber: creditNote.creditNumber,
-      amount: amount,
-      appliedDate: format(new Date(), 'yyyy-MM-dd'),
-      createdAt: new Date().toISOString()
-    });
-    
-    // Update status if fully paid
-    if (invoice.balanceDue <= 0) {
-      invoice.status = INVOICE_STATUSES.PAID;
-      if (!invoice.paidDate) {
-        invoice.paidDate = format(new Date(), 'yyyy-MM-dd');
-      }
-    }
-    
-    invoice.updatedAt = new Date().toISOString();
-    invoices[invoiceIndex] = invoice;
-    
-    return {
-      invoice: { ...invoice },
-      creditNote: { ...creditNote },
-      applicationAmount: amount
     };
   }
 };
